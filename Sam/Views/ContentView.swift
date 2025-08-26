@@ -1,0 +1,779 @@
+import SwiftUI
+import CoreData
+
+struct ContentView: View {
+    @Environment(\.managedObjectContext) private var viewContext
+    @EnvironmentObject private var appState: AppState
+    @StateObject private var chatManager = ChatManager()
+    @State private var showingAbout = false
+    
+    var body: some View {
+        NavigationSplitView(columnVisibility: $appState.sidebarVisibility) {
+            // Sidebar - Chat History
+            SidebarView()
+                .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 300)
+                .environmentObject(chatManager)
+        } detail: {
+            // Main Chat Interface
+            ChatView()
+                .environmentObject(chatManager)
+        }
+        .navigationTitle(appState.windowTitle)
+        .toolbar {
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button(action: {
+                    chatManager.startNewConversation()
+                }) {
+                    Image(systemName: "plus.message")
+                }
+                .help("New Chat")
+                .accessibilityLabel("Start new chat")
+                
+                Button(action: {
+                    appState.toggleSidebar()
+                }) {
+                    Image(systemName: "sidebar.left")
+                }
+                .help("Toggle Sidebar")
+                .accessibilityLabel("Toggle sidebar visibility")
+                
+                Button(action: {
+                    appState.openSettings()
+                }) {
+                    Image(systemName: "gear")
+                }
+                .help("Settings")
+                .accessibilityLabel("Open settings")
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .newChatRequested)) { _ in
+            chatManager.startNewConversation()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .clearChatRequested)) { _ in
+            chatManager.clearHistory()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .toggleSidebarRequested)) { _ in
+            appState.toggleSidebar()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .aboutRequested)) { _ in
+            showingAbout = true
+        }
+        .sheet(isPresented: $showingAbout) {
+            AboutView()
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Sam AI Assistant main interface")
+    }
+}
+
+struct SidebarView: View {
+    @Environment(\.managedObjectContext) private var viewContext
+    @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var chatManager: ChatManager
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // New Chat Button
+            Button(action: {
+                chatManager.startNewConversation()
+            }) {
+                HStack {
+                    Image(systemName: "plus.message")
+                        .accessibilityHidden(true)
+                    Text("New Chat")
+                    Spacer()
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color.accentColor.opacity(0.1))
+                .cornerRadius(8)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Start new chat conversation")
+            .keyboardShortcut("n", modifiers: [.command])
+            
+            Divider()
+            
+            // Chat History
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Recent Chats")
+                    .font(.headline)
+                    .foregroundColor(.secondary)
+                    .accessibilityAddTraits(.isHeader)
+                
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 4) {
+                        // TODO: Implement chat history list from Core Data
+                        if chatManager.messages.isEmpty {
+                            Text("No previous chats")
+                                .font(.caption)
+                                .foregroundColor(.tertiary)
+                                .padding(.top, 8)
+                        } else {
+                            ChatHistoryItem(
+                                title: "Current Chat",
+                                messageCount: chatManager.messages.count,
+                                isActive: true
+                            )
+                        }
+                    }
+                }
+                .frame(maxHeight: 200)
+            }
+            
+            Spacer()
+            
+            // Quick Actions
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Quick Actions")
+                    .font(.headline)
+                    .foregroundColor(.secondary)
+                    .accessibilityAddTraits(.isHeader)
+                
+                QuickActionButton(
+                    icon: "folder",
+                    title: "File Operations",
+                    action: "Help me with file operations"
+                )
+                QuickActionButton(
+                    icon: "info.circle",
+                    title: "System Info",
+                    action: "Show me system information"
+                )
+                QuickActionButton(
+                    icon: "app.badge",
+                    title: "App Control",
+                    action: "Help me control applications"
+                )
+                QuickActionButton(
+                    icon: "gearshape.2",
+                    title: "Workflows",
+                    action: "Show me workflow options"
+                )
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Sidebar with chat history and quick actions")
+    }
+}
+
+struct ChatHistoryItem: View {
+    let title: String
+    let messageCount: Int
+    let isActive: Bool
+    
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.caption)
+                    .fontWeight(isActive ? .semibold : .regular)
+                    .lineLimit(1)
+                
+                Text("\(messageCount) messages")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            if isActive {
+                Circle()
+                    .fill(Color.accentColor)
+                    .frame(width: 6, height: 6)
+                    .accessibilityLabel("Active chat")
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(isActive ? Color.accentColor.opacity(0.1) : Color.clear)
+        .cornerRadius(6)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title), \(messageCount) messages\(isActive ? ", active" : "")")
+    }
+}
+
+struct QuickActionButton: View {
+    let icon: String
+    let title: String
+    let action: String
+    @EnvironmentObject private var chatManager: ChatManager
+    
+    var body: some View {
+        Button(action: {
+            Task {
+                await chatManager.sendMessage(action)
+            }
+        }) {
+            HStack {
+                Image(systemName: icon)
+                    .frame(width: 16)
+                    .accessibilityHidden(true)
+                Text(title)
+                    .font(.caption)
+                Spacer()
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+        }
+        .buttonStyle(.plain)
+        .foregroundColor(.primary)
+        .accessibilityLabel("Quick action: \(title)")
+        .help("Send: \(action)")
+    }
+}
+
+struct ChatView: View {
+    @EnvironmentObject private var chatManager: ChatManager
+    @EnvironmentObject private var appState: AppState
+    @State private var inputText = ""
+    @FocusState private var isInputFocused: Bool
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Messages Area
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 12) {
+                        if chatManager.messages.isEmpty {
+                            WelcomeView()
+                        } else {
+                            ForEach(chatManager.messages) { message in
+                                MessageBubbleView(message: message)
+                                    .id(message.id)
+                            }
+                        }
+                    }
+                    .padding()
+                }
+                .onChange(of: chatManager.messages.count) { _ in
+                    if let lastMessage = chatManager.messages.last {
+                        let animation = appState.reduceMotion ? .none : .easeOut(duration: 0.3)
+                        withAnimation(animation) {
+                            proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                        }
+                    }
+                }
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("Chat messages")
+            }
+            
+            Divider()
+            
+            // Input Area
+            ChatInputView(
+                text: $inputText,
+                isProcessing: $chatManager.isProcessing,
+                isInputFocused: $isInputFocused,
+                onSend: { message in
+                    Task {
+                        await chatManager.sendMessage(message)
+                        inputText = ""
+                    }
+                }
+            )
+        }
+        .background(Color(NSColor.controlBackgroundColor))
+        .onReceive(NotificationCenter.default.publisher(for: .focusChatInputRequested)) { _ in
+            isInputFocused = true
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Chat interface")
+    }
+}
+
+struct WelcomeView: View {
+    @EnvironmentObject private var chatManager: ChatManager
+    
+    var body: some View {
+        VStack(spacing: 24) {
+            Image(systemName: "brain.head.profile")
+                .font(.system(size: 64))
+                .foregroundColor(.accentColor)
+                .accessibilityLabel("Sam AI Assistant icon")
+            
+            VStack(spacing: 12) {
+                Text("Welcome to Sam")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+                    .accessibilityAddTraits(.isHeader)
+                
+                Text("Your intelligent macOS assistant")
+                    .font(.title2)
+                    .foregroundColor(.secondary)
+            }
+            
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Try asking me to:")
+                    .font(.headline)
+                    .accessibilityAddTraits(.isHeader)
+                
+                ExampleCommand(
+                    text: "Copy file.pdf to Desktop",
+                    action: { Task { await chatManager.sendMessage("Copy file.pdf to Desktop") } }
+                )
+                ExampleCommand(
+                    text: "What's my battery level?",
+                    action: { Task { await chatManager.sendMessage("What's my battery level?") } }
+                )
+                ExampleCommand(
+                    text: "Open Safari and go to apple.com",
+                    action: { Task { await chatManager.sendMessage("Open Safari and go to apple.com") } }
+                )
+                ExampleCommand(
+                    text: "Organize my Downloads folder",
+                    action: { Task { await chatManager.sendMessage("Organize my Downloads folder") } }
+                )
+            }
+            .padding()
+            .background(Color.accentColor.opacity(0.05))
+            .cornerRadius(12)
+        }
+        .frame(maxWidth: 400)
+        .padding()
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Welcome screen with example commands")
+    }
+}
+
+struct ExampleCommand: View {
+    let text: String
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack {
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundColor(.accentColor)
+                    .accessibilityHidden(true)
+                Text(text)
+                    .font(.body)
+                    .foregroundColor(.primary)
+                Spacer()
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Example command: \(text)")
+        .accessibilityHint("Tap to send this command to Sam")
+        .help("Send: \(text)")
+    }
+}
+
+struct MessageBubbleView: View {
+    let message: ChatMessage
+    
+    var body: some View {
+        HStack {
+            if message.isUserMessage {
+                Spacer()
+                UserMessageBubble(message: message)
+            } else {
+                AssistantMessageBubble(message: message)
+                Spacer()
+            }
+        }
+    }
+}
+
+struct UserMessageBubble: View {
+    let message: ChatMessage
+    @Environment(\.colorScheme) private var colorScheme
+    
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 4) {
+            Text(message.content)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(Color.accentColor)
+                .foregroundColor(.white)
+                .cornerRadius(18)
+                .frame(maxWidth: 300, alignment: .trailing)
+                .textSelection(.enabled)
+            
+            Text(message.timestamp, style: .time)
+                .font(.caption2)
+                .foregroundColor(.secondary)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Your message: \(message.content)")
+        .accessibilityHint("Sent at \(message.timestamp.formatted(date: .omitted, time: .shortened))")
+    }
+}
+
+struct AssistantMessageBubble: View {
+    let message: ChatMessage
+    @Environment(\.colorScheme) private var colorScheme
+    
+    private var bubbleBackgroundColor: Color {
+        colorScheme == .dark 
+            ? Color(NSColor.controlBackgroundColor).opacity(0.8)
+            : Color(NSColor.controlBackgroundColor)
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "brain.head.profile")
+                    .font(.caption)
+                    .foregroundColor(.accentColor)
+                    .padding(.top, 2)
+                    .accessibilityHidden(true)
+                
+                Text(message.content)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(bubbleBackgroundColor)
+                    .cornerRadius(18)
+                    .frame(maxWidth: 300, alignment: .leading)
+                    .textSelection(.enabled)
+            }
+            
+            HStack {
+                Text(message.timestamp, style: .time)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                
+                if message.executionTime > 0 {
+                    Text("• \(String(format: "%.1fs", message.executionTime))")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+                
+                if message.tokens > 0 {
+                    Text("• \(message.tokens) tokens")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding(.leading, 24)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Sam's response: \(message.content)")
+        .accessibilityHint("Responded at \(message.timestamp.formatted(date: .omitted, time: .shortened))\(message.executionTime > 0 ? ", took \(String(format: "%.1f", message.executionTime)) seconds" : "")")
+    }
+}
+
+struct ChatInputView: View {
+    @Binding var text: String
+    let isProcessing: Bool
+    var isInputFocused: FocusState<Bool>.Binding
+    let onSend: (String) -> Void
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            TextField("Ask Sam anything...", text: $text, axis: .vertical)
+                .textFieldStyle(.roundedBorder)
+                .lineLimit(1...5)
+                .focused(isInputFocused)
+                .onSubmit {
+                    sendMessage()
+                }
+                .disabled(isProcessing)
+                .accessibilityLabel("Message input field")
+                .accessibilityHint("Type your message to Sam here")
+            
+            Button(action: sendMessage) {
+                if isProcessing {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                        .frame(width: 16, height: 16)
+                        .accessibilityLabel("Processing message")
+                } else {
+                    Image(systemName: "paperplane.fill")
+                        .accessibilityLabel("Send message")
+                }
+            }
+            .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isProcessing)
+            .keyboardShortcut(.return, modifiers: [.command])
+            .help(isProcessing ? "Processing..." : "Send message (⌘↩)")
+        }
+        .padding()
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Message input area")
+    }
+    
+    private func sendMessage() {
+        let message = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !message.isEmpty && !isProcessing else { return }
+        
+        onSend(message)
+    }
+}
+
+struct SettingsView: View {
+    @EnvironmentObject private var appState: AppState
+    
+    var body: some View {
+        TabView {
+            GeneralSettingsView()
+                .tabItem {
+                    Label("General", systemImage: "gear")
+                }
+            
+            AppearanceSettingsView()
+                .tabItem {
+                    Label("Appearance", systemImage: "paintbrush")
+                }
+            
+            AISettingsView()
+                .tabItem {
+                    Label("AI", systemImage: "brain.head.profile")
+                }
+            
+            PrivacySettingsView()
+                .tabItem {
+                    Label("Privacy", systemImage: "hand.raised")
+                }
+            
+            AccessibilitySettingsView()
+                .tabItem {
+                    Label("Accessibility", systemImage: "accessibility")
+                }
+        }
+        .frame(width: 600, height: 500)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Settings")
+    }
+}
+
+struct GeneralSettingsView: View {
+    @EnvironmentObject private var appState: AppState
+    @State private var launchAtLogin = false
+    @State private var showMenuBarIcon = true
+    @State private var enableNotifications = true
+    
+    var body: some View {
+        Form {
+            Section("Startup") {
+                Toggle("Launch Sam at login", isOn: $launchAtLogin)
+                    .accessibilityHint("Automatically start Sam when you log in to macOS")
+                
+                Toggle("Show menu bar icon", isOn: $showMenuBarIcon)
+                    .accessibilityHint("Display Sam icon in the menu bar for quick access")
+            }
+            
+            Section("Notifications") {
+                Toggle("Enable notifications", isOn: $enableNotifications)
+                    .accessibilityHint("Allow Sam to send system notifications")
+            }
+            
+            Section("Window") {
+                Picker("Sidebar visibility", selection: $appState.sidebarVisibility) {
+                    Text("Automatic").tag(NavigationSplitViewVisibility.automatic)
+                    Text("Always show").tag(NavigationSplitViewVisibility.doubleColumn)
+                    Text("Hide").tag(NavigationSplitViewVisibility.detailOnly)
+                }
+                .accessibilityLabel("Sidebar visibility preference")
+            }
+        }
+        .formStyle(.grouped)
+        .navigationTitle("General")
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+}
+
+struct AppearanceSettingsView: View {
+    @EnvironmentObject private var appState: AppState
+    
+    var body: some View {
+        Form {
+            Section("Theme") {
+                Picker("Appearance", selection: $appState.themeMode) {
+                    ForEach(AppState.ThemeMode.allCases, id: \.self) { mode in
+                        Text(mode.displayName).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .accessibilityLabel("Choose app appearance theme")
+            }
+            
+            Section("Interface") {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Font Size")
+                        .font(.headline)
+                    
+                    Text("Use system font size preferences in System Settings > Accessibility > Display")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .navigationTitle("Appearance")
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+}
+
+struct AISettingsView: View {
+    @State private var apiKey = ""
+    @State private var selectedModel = "gpt-4-turbo"
+    @State private var maxTokens = 4000
+    @State private var temperature = 0.7
+    
+    var body: some View {
+        Form {
+            Section("OpenAI Configuration") {
+                SecureField("API Key", text: $apiKey)
+                    .accessibilityLabel("OpenAI API Key")
+                    .accessibilityHint("Enter your OpenAI API key for cloud processing")
+                
+                Picker("Model", selection: $selectedModel) {
+                    Text("GPT-4 Turbo").tag("gpt-4-turbo")
+                    Text("GPT-4").tag("gpt-4")
+                    Text("GPT-3.5 Turbo").tag("gpt-3.5-turbo")
+                }
+                .accessibilityLabel("AI model selection")
+            }
+            
+            Section("Response Settings") {
+                VStack(alignment: .leading) {
+                    Text("Max Tokens: \(maxTokens)")
+                    Slider(value: Binding(
+                        get: { Double(maxTokens) },
+                        set: { maxTokens = Int($0) }
+                    ), in: 100...8000, step: 100)
+                    .accessibilityLabel("Maximum tokens per response")
+                    .accessibilityValue("\(maxTokens) tokens")
+                }
+                
+                VStack(alignment: .leading) {
+                    Text("Temperature: \(String(format: "%.1f", temperature))")
+                    Slider(value: $temperature, in: 0...2, step: 0.1)
+                    .accessibilityLabel("Response creativity level")
+                    .accessibilityValue("\(String(format: "%.1f", temperature)) out of 2")
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .navigationTitle("AI")
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+}
+
+struct PrivacySettingsView: View {
+    @State private var localProcessingPreferred = true
+    @State private var shareUsageData = false
+    @State private var encryptChatHistory = true
+    @State private var autoDeleteOldChats = false
+    
+    var body: some View {
+        Form {
+            Section("Data Processing") {
+                Toggle("Prefer local processing", isOn: $localProcessingPreferred)
+                    .accessibilityHint("Process simple tasks locally when possible for better privacy")
+                
+                Toggle("Encrypt chat history", isOn: $encryptChatHistory)
+                    .accessibilityHint("Encrypt stored conversations for additional security")
+            }
+            
+            Section("Data Sharing") {
+                Toggle("Share anonymous usage data", isOn: $shareUsageData)
+                    .accessibilityHint("Help improve Sam by sharing anonymous usage statistics")
+            }
+            
+            Section("Data Retention") {
+                Toggle("Auto-delete old chats", isOn: $autoDeleteOldChats)
+                    .accessibilityHint("Automatically remove chat history older than 30 days")
+                
+                Button("Clear All Chat History") {
+                    // TODO: Implement clear history
+                }
+                .foregroundColor(.red)
+                .accessibilityLabel("Clear all chat history")
+                .accessibilityHint("Permanently delete all stored conversations")
+            }
+            
+            Section("Information") {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Privacy Policy")
+                        .font(.headline)
+                    
+                    Text("Sam processes most tasks locally on your Mac. Only complex queries that require advanced AI capabilities are sent to external services. Your data is never used for training AI models.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .navigationTitle("Privacy")
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+}
+
+struct AccessibilitySettingsView: View {
+    @EnvironmentObject private var appState: AppState
+    
+    var body: some View {
+        Form {
+            Section("Motion") {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Reduce Motion")
+                        .font(.headline)
+                    
+                    if appState.reduceMotion {
+                        Text("✓ Reduce Motion is enabled in System Settings")
+                            .font(.caption)
+                            .foregroundColor(.green)
+                    } else {
+                        Text("Reduce Motion is disabled in System Settings")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            
+            Section("Display") {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Increase Contrast")
+                        .font(.headline)
+                    
+                    if appState.increaseContrast {
+                        Text("✓ Increase Contrast is enabled in System Settings")
+                            .font(.caption)
+                            .foregroundColor(.green)
+                    } else {
+                        Text("Increase Contrast is disabled in System Settings")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Text Size")
+                        .font(.headline)
+                    
+                    Text("Sam respects your system text size preferences. Adjust text size in System Settings > Accessibility > Display.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            Section("Keyboard Navigation") {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Keyboard Shortcuts")
+                        .font(.headline)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("⌘N - New Chat")
+                        Text("⌘/ - Focus Input")
+                        Text("⌘⇧K - Clear History")
+                        Text("⌃⌘S - Toggle Sidebar")
+                    }
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .navigationTitle("Accessibility")
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+}
+
+#Preview {
+    ContentView()
+        .environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
+}

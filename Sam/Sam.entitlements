@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- App Sandbox -->
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	
+	<!-- File System Access -->
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+	<key>com.apple.security.files.downloads.read-write</key>
+	<true/>
+	<key>com.apple.security.files.bookmarks.app-scope</key>
+	<true/>
+	<key>com.apple.security.files.bookmarks.document-scope</key>
+	<true/>
+	
+	<!-- Network Access -->
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<key>com.apple.security.network.server</key>
+	<false/>
+	
+	<!-- System Access -->
+	<key>com.apple.security.automation.apple-events</key>
+	<true/>
+	<key>com.apple.security.scripting-targets</key>
+	<dict>
+		<key>com.apple.finder</key>
+		<array>
+			<string>com.apple.finder</string>
+		</array>
+		<key>com.apple.Safari</key>
+		<array>
+			<string>com.apple.Safari</string>
+		</array>
+		<key>com.apple.mail</key>
+		<array>
+			<string>com.apple.mail</string>
+		</array>
+		<key>com.apple.iCal</key>
+		<array>
+			<string>com.apple.iCal</string>
+		</array>
+		<key>com.apple.systempreferences</key>
+		<array>
+			<string>com.apple.systempreferences</string>
+		</array>
+	</dict>
+	
+	<!-- Hardware Access -->
+	<key>com.apple.security.device.camera</key>
+	<true/>
+	<key>com.apple.security.device.microphone</key>
+	<true/>
+	
+	<!-- Personal Information Access -->
+	<key>com.apple.security.personal-information.addressbook</key>
+	<true/>
+	<key>com.apple.security.personal-information.calendars</key>
+	<true/>
+	<key>com.apple.security.personal-information.location</key>
+	<true/>
+	<key>com.apple.security.personal-information.photos-library</key>
+	<true/>
+	
+	<!-- Hardened Runtime -->
+	<key>com.apple.security.cs.allow-jit</key>
+	<false/>
+	<key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+	<false/>
+	<key>com.apple.security.cs.allow-dyld-environment-variables</key>
+	<false/>
+	<key>com.apple.security.cs.disable-library-validation</key>
+	<false/>
+	<key>com.apple.security.cs.disable-executable-page-protection</key>
+	<false/>
+	
+	<!-- Keychain Access -->
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)com.samassistant.Sam</string>
+	</array>
+</dict>
+</plist>

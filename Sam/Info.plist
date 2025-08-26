@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Sam AI Assistant</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIconFile</key>
+	<string></string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.productivity</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
+	<key>NSHumanReadableCopyright</key>
+	<string></string>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+	<key>NSSupportsAutomaticTermination</key>
+	<true/>
+	<key>NSSupportsSuddenTermination</key>
+	<true/>
+	
+	<!-- File System Access Permissions -->
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>Sam needs access to your Documents folder to help you organize and manage files through natural language commands.</string>
+	<key>NSDesktopFolderUsageDescription</key>
+	<string>Sam needs access to your Desktop to help you organize and manage files through natural language commands.</string>
+	<key>NSDownloadsFolderUsageDescription</key>
+	<string>Sam needs access to your Downloads folder to help you organize and manage files through natural language commands.</string>
+	<key>NSRemovableVolumesUsageDescription</key>
+	<string>Sam needs access to external drives to help you manage files across all your storage devices.</string>
+	<key>NSNetworkVolumesUsageDescription</key>
+	<string>Sam needs access to network drives to help you manage files across all your storage devices.</string>
+	
+	<!-- System Information Access -->
+	<key>NSSystemAdministrationUsageDescription</key>
+	<string>Sam needs system administration access to provide you with system information and perform system management tasks.</string>
+	
+	<!-- Accessibility and Automation -->
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Sam uses AppleScript and Apple Events to control other applications and automate tasks on your behalf.</string>
+	
+	<!-- Camera and Microphone (for future features) -->
+	<key>NSCameraUsageDescription</key>
+	<string>Sam may use your camera to help analyze images and documents when requested.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Sam may use your microphone for voice commands and dictation features.</string>
+	
+	<!-- Location Services (for context-aware features) -->
+	<key>NSLocationUsageDescription</key>
+	<string>Sam may use your location to provide context-aware assistance and local information.</string>
+	
+	<!-- Contacts Access (for email and calendar integration) -->
+	<key>NSContactsUsageDescription</key>
+	<string>Sam needs access to your contacts to help you send emails and create calendar events with natural language commands.</string>
+	
+	<!-- Calendar and Reminders Access -->
+	<key>NSCalendarsUsageDescription</key>
+	<string>Sam needs access to your calendar to help you create, modify, and manage events through natural language commands.</string>
+	<key>NSRemindersUsageDescription</key>
+	<string>Sam needs access to your reminders to help you create and manage tasks through natural language commands.</string>
+	
+	<!-- Photos Access (for image organization) -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Sam needs access to your photo library to help you organize and manage your images through natural language commands.</string>
+	
+	<!-- URL Schemes for App Integration -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>Sam AI Assistant</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>sam</string>
+				<string>samassistant</string>
+			</array>
+		</dict>
+	</array>
+	
+	<!-- Background Modes -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>background-processing</string>
+		<string>background-fetch</string>
+	</array>
+	
+	<!-- App Transport Security -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>api.openai.com</key>
+			<dict>
+				<key>NSExceptionRequiresForwardSecrecy</key>
+				<false/>
+				<key>NSExceptionMinimumTLSVersion</key>
+				<string>TLSv1.2</string>
+				<key>NSThirdPartyExceptionRequiresForwardSecrecy</key>
+				<false/>
+			</dict>
+		</dict>
+	</dict>
+	
+	<!-- Hardened Runtime Exceptions -->
+	<key>com.apple.security.automation.apple-events</key>
+	<true/>
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+	<key>com.apple.security.files.downloads.read-write</key>
+	<true/>
+	<key>com.apple.security.network.client</key>
+	<true/>
+</dict>
+</plist>
