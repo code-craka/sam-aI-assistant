@@ -1,0 +1,165 @@
+#!/bin/bash
+
+# Pre-commit hook for Sam macOS AI Assistant
+# Author: Sayem Abdullah Rihan
+# This hook runs code quality checks before each commit
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+echo -e "${BLUE}Running pre-commit checks...${NC}"
+
+# Function to check if command exists
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+# Function to run SwiftLint
+run_swiftlint() {
+    if command_exists swiftlint; then
+        echo -e "${BLUE}Running SwiftLint...${NC}"
+        if swiftlint lint --quiet --config .swiftlint.yml; then
+            echo -e "${GREEN}✅ SwiftLint passed${NC}"
+        else
+            echo -e "${RED}❌ SwiftLint failed${NC}"
+            echo -e "${YELLOW}Fix the issues above before committing${NC}"
+            exit 1
+        fi
+    else
+        echo -e "${YELLOW}⚠️  SwiftLint not found, skipping...${NC}"
+    fi
+}
+
+# Function to run SwiftFormat check
+run_swiftformat_check() {
+    if command_exists swiftformat; then
+        echo -e "${BLUE}Checking SwiftFormat...${NC}"
+        if swiftformat --lint Sam/; then
+            echo -e "${GREEN}✅ SwiftFormat check passed${NC}"
+        else
+            echo -e "${RED}❌ SwiftFormat check failed${NC}"
+            echo -e "${YELLOW}Run 'swiftformat Sam/' to fix formatting issues${NC}"
+            exit 1
+        fi
+    else
+        echo -e "${YELLOW}⚠️  SwiftFormat not found, skipping...${NC}"
+    fi
+}
+
+# Function to check for TODO/FIXME comments
+check_todos() {
+    echo -e "${BLUE}Checking for TODO/FIXME comments...${NC}"
+    
+    # Get staged Swift files
+    staged_files=$(git diff --cached --name-only --diff-filter=ACM | grep '\.swift$' || true)
+    
+    if [ -n "$staged_files" ]; then
+        # Check for TODO/FIXME in staged files
+        todos=$(echo "$staged_files" | xargs grep -n "TODO\|FIXME" || true)
+        
+        if [ -n "$todos" ]; then
+            echo -e "${YELLOW}⚠️  Found TODO/FIXME comments:${NC}"
+            echo "$todos"
+            echo -e "${YELLOW}Consider addressing these before committing${NC}"
+        else
+            echo -e "${GREEN}✅ No TODO/FIXME comments found${NC}"
+        fi
+    fi
+}
+
+# Function to check commit message format
+check_commit_message() {
+    # This will be called by commit-msg hook, not pre-commit
+    # Just a placeholder for now
+    echo -e "${GREEN}✅ Commit message format will be checked${NC}"
+}
+
+# Function to check file sizes
+check_file_sizes() {
+    echo -e "${BLUE}Checking file sizes...${NC}"
+    
+    # Check for large files (>1MB)
+    large_files=$(git diff --cached --name-only | xargs ls -la 2>/dev/null | awk '$5 > 1048576 {print $9 " (" $5 " bytes)"}' || true)
+    
+    if [ -n "$large_files" ]; then
+        echo -e "${YELLOW}⚠️  Large files detected:${NC}"
+        echo "$large_files"
+        echo -e "${YELLOW}Consider using Git LFS for large files${NC}"
+    else
+        echo -e "${GREEN}✅ No large files detected${NC}"
+    fi
+}
+
+# Function to validate Swift syntax
+validate_swift_syntax() {
+    echo -e "${BLUE}Validating Swift syntax...${NC}"
+    
+    # Get staged Swift files
+    staged_files=$(git diff --cached --name-only --diff-filter=ACM | grep '\.swift$' || true)
+    
+    if [ -n "$staged_files" ]; then
+        for file in $staged_files; do
+            if ! swiftc -parse "$file" >/dev/null 2>&1; then
+                echo -e "${RED}❌ Syntax error in $file${NC}"
+                swiftc -parse "$file"
+                exit 1
+            fi
+        done
+        echo -e "${GREEN}✅ Swift syntax validation passed${NC}"
+    else
+        echo -e "${BLUE}No Swift files to validate${NC}"
+    fi
+}
+
+# Function to check for secrets
+check_for_secrets() {
+    echo -e "${BLUE}Checking for potential secrets...${NC}"
+    
+    # Patterns to look for
+    secret_patterns=(
+        "password\s*=\s*['\"][^'\"]*['\"]"
+        "api[_-]?key\s*=\s*['\"][^'\"]*['\"]"
+        "secret\s*=\s*['\"][^'\"]*['\"]"
+        "token\s*=\s*['\"][^'\"]*['\"]"
+        "private[_-]?key"
+    )
+    
+    staged_files=$(git diff --cached --name-only --diff-filter=ACM || true)
+    
+    if [ -n "$staged_files" ]; then
+        for pattern in "${secret_patterns[@]}"; do
+            matches=$(echo "$staged_files" | xargs grep -i -n "$pattern" 2>/dev/null || true)
+            if [ -n "$matches" ]; then
+                echo -e "${RED}❌ Potential secret found:${NC}"
+                echo "$matches"
+                echo -e "${YELLOW}Please remove secrets before committing${NC}"
+                exit 1
+            fi
+        done
+        echo -e "${GREEN}✅ No secrets detected${NC}"
+    fi
+}
+
+# Main execution
+echo -e "${BLUE}Pre-commit hook for Sam macOS AI Assistant${NC}"
+echo -e "${BLUE}Author: Sayem Abdullah Rihan${NC}"
+echo ""
+
+# Run all checks
+validate_swift_syntax
+run_swiftlint
+run_swiftformat_check
+check_todos
+check_file_sizes
+check_for_secrets
+check_commit_message
+
+echo ""
+echo -e "${GREEN}🎉 All pre-commit checks passed!${NC}"
+echo -e "${BLUE}Proceeding with commit...${NC}"
