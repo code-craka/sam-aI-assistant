@@ -74,8 +74,8 @@ Dependencies/
 #
 # It is recommended to not store the screenshots in the git repo.
 # Instead, use fastlane to re-generate the screenshots whenever they are needed.
-# For more information about the tools used to generate the screenshots, see
-# https://docs.fastlane.tools/actions/snapshot/
+# For more information about the recommended setup visit:
+# https://docs.fastlane.tools/best-practices/source-control/
 
 fastlane/report.xml
 fastlane/Preview.html
@@ -116,6 +116,76 @@ Network Trash Folder
 Temporary Items
 .apdisk
 
-# Kiro IDE
-.kiro/cache/
-.kiro/logs/
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/
+.temp/
+
+# Logs
+*.log
+logs/
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# API Keys and Secrets
+secrets.plist
+config.plist
+APIKeys.plist
+
+# Build artifacts
+*.app
+*.dmg
+*.pkg
+*.zip
+
+# Documentation build
+docs/build/
+.docs/
+
+# Test results
+test-results/
+coverage/
+*.gcov
+*.gcda
+*.gcno
+
+# Profiling
+*.trace
+
+# Backup files
+*.backup
+*.bak
+*~.nib
+
+# Local development
+local/
+.local/
+
+# Sam-specific ignores
+Sam/Resources/Secrets/
+Sam/Resources/Config/Local/
+*.xcconfig.local
+
+# Core Data
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# Temporary implementation files
+*_temp.swift
+*_backup.swift
+streaming_test.swift
+STREAMING_IMPLEMENTATION_SUMMARY.md

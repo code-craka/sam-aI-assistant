@@ -218,6 +218,47 @@ class ChatRepository: ObservableObject {
         }
     }
     
+    /// Update message content by ID
+    func updateMessage(_ messageId: UUID, content: String, in conversation: Conversation) async throws {
+        try await persistenceController.performBackgroundTask { context in
+            let conversationObjectID = conversation.objectID
+            guard let conversationInContext = try? context.existingObject(with: conversationObjectID) as? Conversation else {
+                throw ChatRepositoryError.conversationNotFound
+            }
+            
+            // Find the message in the conversation
+            guard let message = conversationInContext.sortedMessages.first(where: { $0.id == messageId }) else {
+                throw ChatRepositoryError.messageNotFound
+            }
+            
+            message.content = content
+            
+            try self.persistenceController.saveBackground(context)
+            self.logger.info("Updated message content: \(messageId)")
+        }
+    }
+    
+    /// Delete message by ID
+    func deleteMessage(_ messageId: UUID, in conversation: Conversation) async throws {
+        try await persistenceController.performBackgroundTask { context in
+            let conversationObjectID = conversation.objectID
+            guard let conversationInContext = try? context.existingObject(with: conversationObjectID) as? Conversation else {
+                throw ChatRepositoryError.conversationNotFound
+            }
+            
+            // Find the message in the conversation
+            guard let message = conversationInContext.sortedMessages.first(where: { $0.id == messageId }) else {
+                throw ChatRepositoryError.messageNotFound
+            }
+            
+            context.delete(message)
+            conversationInContext.updateStatistics()
+            
+            try self.persistenceController.saveBackground(context)
+            self.logger.info("Deleted message: \(messageId)")
+        }
+    }
+    
     // MARK: - Statistics
     
     /// Get chat statistics

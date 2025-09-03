@@ -3,7 +3,7 @@ import AppKit
 
 @MainActor
 class ContextManager: ObservableObject {
-    @Published var currentContext: ChatContext = ChatContext()
+    @Published var currentContext: ChatModels.ChatContext = ChatModels.ChatContext()
     @Published var isUpdatingContext = false
     
     private var contextUpdateTimer: Timer?
@@ -22,7 +22,7 @@ class ContextManager: ObservableObject {
     
     // MARK: - Public Methods
     
-    func getCurrentContext() async -> ChatContext {
+    func getCurrentContext() async -> ChatModels.ChatContext {
         await updateContext()
         return currentContext
     }
@@ -61,7 +61,7 @@ class ContextManager: ObservableObject {
             let recentFiles = getRecentFiles()
             let activeApplications = getActiveApplications()
             
-            currentContext = ChatContext(
+            currentContext = ChatModels.ChatContext(
                 systemInfo: systemInfo,
                 currentDirectory: currentDirectory,
                 recentFiles: recentFiles,
@@ -199,7 +199,23 @@ class ContextManager: ObservableObject {
     
     // MARK: - Context Utilities
     
-    func addToConversationHistory(_ message: ChatMessage) {
+    func getSystemInfo() -> SystemInfo? {
+        return currentContext.systemInfo
+    }
+    
+    func getCurrentDirectory() -> URL? {
+        return currentContext.currentDirectory
+    }
+    
+    func getRecentFiles() -> [URL] {
+        return currentContext.recentFiles
+    }
+    
+    func getActiveApplications() -> [String] {
+        return currentContext.activeApplications
+    }
+    
+    func addToConversationHistory(_ message: ChatModels.ChatMessage) {
         var history = currentContext.conversationHistory
         history.append(message)
         
@@ -208,7 +224,7 @@ class ContextManager: ObservableObject {
             history = Array(history.suffix(20))
         }
         
-        currentContext = ChatContext(
+        currentContext = ChatModels.ChatContext(
             systemInfo: currentContext.systemInfo,
             currentDirectory: currentContext.currentDirectory,
             recentFiles: currentContext.recentFiles,

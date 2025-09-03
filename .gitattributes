@@ -1,0 +1,80 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Swift files
+*.swift text diff=swift
+
+# Xcode project files
+*.pbxproj text
+*.xcconfig text
+*.plist text
+
+# Documentation
+*.md text
+*.txt text
+*.rtf text
+
+# Images
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg text
+
+# Fonts
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+
+# Audio/Video
+*.mp3 binary
+*.mp4 binary
+*.mov binary
+*.wav binary
+*.aiff binary
+
+# Archives
+*.zip binary
+*.tar binary
+*.gz binary
+*.dmg binary
+*.pkg binary
+
+# Xcode specific
+*.xcuserstate binary
+*.xcworkspacedata text
+*.xcscheme text
+
+# Core Data
+*.xcdatamodeld/** text
+*.xcdatamodel/** text
+
+# Interface Builder
+*.storyboard text
+*.xib text
+
+# Localization
+*.strings text
+*.stringsdict text
+
+# JSON/XML
+*.json text
+*.xml text
+*.plist text
+
+# Shell scripts
+*.sh text eol=lf
+
+# Git
+.gitignore text
+.gitattributes text
+.gitmodules text
+
+# License and documentation
+LICENSE text
+README* text
+CHANGELOG* text
+CONTRIBUTING* text
+CODE_OF_CONDUCT* text

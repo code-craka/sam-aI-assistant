@@ -14,7 +14,7 @@ class TaskManager: ObservableObject {
     
     // MARK: - Public Methods
     
-    func processTask(_ input: String, context: ChatContext) async throws -> TaskResult {
+    func processTask(_ input: String, context: ChatModels.ChatContext) async throws -> TaskResult {
         isProcessingTask = true
         currentTask = nil
         
@@ -64,7 +64,7 @@ class TaskManager: ObservableObject {
         }
         
         // TODO: Get current context
-        let context = ChatContext()
+        let context = ChatModels.ChatContext()
         return try await executeTask(lastTask, context: context)
     }
     
@@ -76,7 +76,7 @@ class TaskManager: ObservableObject {
     
     // MARK: - Private Methods
     
-    private func executeTask(_ command: ParsedCommand, context: ChatContext) async throws -> TaskResult {
+    private func executeTask(_ command: ParsedCommand, context: ChatModels.ChatContext) async throws -> TaskResult {
         let startTime = Date()
         
         // Check if task requires confirmation
@@ -138,7 +138,7 @@ class TaskManager: ObservableObject {
     
     // MARK: - Task Execution Methods
     
-    private func executeFileOperation(_ command: ParsedCommand, context: ChatContext) async throws -> TaskResult {
+    private func executeFileOperation(_ command: ParsedCommand, context: ChatModels.ChatContext) async throws -> TaskResult {
         // TODO: Implement file operations
         return TaskResult(
             success: true,
@@ -147,7 +147,7 @@ class TaskManager: ObservableObject {
         )
     }
     
-    private func executeSystemQuery(_ command: ParsedCommand, context: ChatContext) async throws -> TaskResult {
+    private func executeSystemQuery(_ command: ParsedCommand, context: ChatModels.ChatContext) async throws -> TaskResult {
         // TODO: Implement system queries
         return TaskResult(
             success: true,
@@ -156,7 +156,7 @@ class TaskManager: ObservableObject {
         )
     }
     
-    private func executeAppControl(_ command: ParsedCommand, context: ChatContext) async throws -> TaskResult {
+    private func executeAppControl(_ command: ParsedCommand, context: ChatModels.ChatContext) async throws -> TaskResult {
         // TODO: Implement app control
         return TaskResult(
             success: true,
@@ -165,7 +165,7 @@ class TaskManager: ObservableObject {
         )
     }
     
-    private func executeTextProcessing(_ command: ParsedCommand, context: ChatContext) async throws -> TaskResult {
+    private func executeTextProcessing(_ command: ParsedCommand, context: ChatModels.ChatContext) async throws -> TaskResult {
         // TODO: Implement text processing
         return TaskResult(
             success: true,
@@ -174,7 +174,7 @@ class TaskManager: ObservableObject {
         )
     }
     
-    private func executeCalculation(_ command: ParsedCommand, context: ChatContext) async throws -> TaskResult {
+    private func executeCalculation(_ command: ParsedCommand, context: ChatModels.ChatContext) async throws -> TaskResult {
         // TODO: Implement calculations
         return TaskResult(
             success: true,
@@ -183,7 +183,7 @@ class TaskManager: ObservableObject {
         )
     }
     
-    private func executeWebQuery(_ command: ParsedCommand, context: ChatContext) async throws -> TaskResult {
+    private func executeWebQuery(_ command: ParsedCommand, context: ChatModels.ChatContext) async throws -> TaskResult {
         // TODO: Implement web queries
         return TaskResult(
             success: true,
@@ -192,7 +192,7 @@ class TaskManager: ObservableObject {
         )
     }
     
-    private func executeAutomation(_ command: ParsedCommand, context: ChatContext) async throws -> TaskResult {
+    private func executeAutomation(_ command: ParsedCommand, context: ChatModels.ChatContext) async throws -> TaskResult {
         // TODO: Implement automation
         return TaskResult(
             success: true,
@@ -201,7 +201,7 @@ class TaskManager: ObservableObject {
         )
     }
     
-    private func executeSettings(_ command: ParsedCommand, context: ChatContext) async throws -> TaskResult {
+    private func executeSettings(_ command: ParsedCommand, context: ChatModels.ChatContext) async throws -> TaskResult {
         // TODO: Implement settings management
         return TaskResult(
             success: true,
@@ -210,7 +210,7 @@ class TaskManager: ObservableObject {
         )
     }
     
-    private func executeHelp(_ command: ParsedCommand, context: ChatContext) async throws -> TaskResult {
+    private func executeHelp(_ command: ParsedCommand, context: ChatModels.ChatContext) async throws -> TaskResult {
         let helpText = generateHelpText(for: command.parameters["topic"])
         
         return TaskResult(
