@@ -25,7 +25,7 @@ class TaskManager: ObservableObject {
         
         do {
             // Step 1: Classify the task
-            let classification = try await taskClassifier.classify(input)
+            let classification = await taskClassifier.classify(input)
             
             // Step 2: Parse the command
             let parsedCommand = ParsedCommand(
@@ -324,61 +324,6 @@ enum TaskManagerError: LocalizedError {
 }
 
 // MARK: - Placeholder Services
-
-class TaskClassifier {
-    func classify(_ input: String) async throws -> TaskClassificationResult {
-        // TODO: Implement actual task classification
-        // For now, return a simple classification based on keywords
-        
-        let lowercased = input.lowercased()
-        
-        if lowercased.contains("copy") || lowercased.contains("move") || lowercased.contains("delete") || lowercased.contains("file") {
-            return TaskClassificationResult(
-                taskType: .fileOperation,
-                confidence: 0.8,
-                parameters: [:],
-                complexity: .simple,
-                processingRoute: .local
-            )
-        } else if lowercased.contains("battery") || lowercased.contains("storage") || lowercased.contains("memory") {
-            return TaskClassificationResult(
-                taskType: .systemQuery,
-                confidence: 0.9,
-                parameters: [:],
-                complexity: .simple,
-                processingRoute: .local
-            )
-        } else if lowercased.contains("open") || lowercased.contains("app") || lowercased.contains("safari") {
-            return TaskClassificationResult(
-                taskType: .appControl,
-                confidence: 0.7,
-                parameters: [:],
-                complexity: .moderate,
-                processingRoute: .hybrid
-            )
-        } else if lowercased.contains("help") || lowercased.contains("what") || lowercased.contains("how") {
-            return TaskClassificationResult(
-                taskType: .help,
-                confidence: 0.6,
-                parameters: [:],
-                complexity: .simple,
-                processingRoute: .local
-            )
-        }
-        
-        return TaskClassificationResult(
-            taskType: .unknown,
-            confidence: 0.3,
-            parameters: [:],
-            complexity: .complex,
-            processingRoute: .cloud
-        )
-    }
-}
-
-class FileSystemService {
-    // TODO: Implement file system operations
-}
 
 class SystemService {
     // TODO: Implement system information queries
