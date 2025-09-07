@@ -143,7 +143,7 @@
   - Implement reminder and task management through system apps
   - _Requirements: 5.2, 5.3_
 
-- [ ] 18. Add AppleScript engine for advanced app automation
+- [x] 18. Add AppleScript engine for advanced app automation
   - Create AppleScriptEngine class with dynamic script generation
   - Implement script compilation, caching, and execution
   - Add error handling and permission management for automation
