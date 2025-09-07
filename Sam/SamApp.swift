@@ -83,7 +83,7 @@ struct SamCommands: Commands {
 
 // MARK: - Core Data Stack is now in PersistenceController.swift
 // 
-MARK: - Notification Names
+// MARK: - Notification Names
 
 extension Notification.Name {
     static let newChatRequested = Notification.Name("newChatRequested")

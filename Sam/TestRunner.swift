@@ -1,31 +1,16 @@
-import SwiftUI
+import Foundation
 
-// Simple test to verify our implementation compiles
+// MARK: - Test Runner
+/// Simple test runner for FileSystemService
+@main
 struct TestRunner {
-    static func testAppState() {
-        let appState = AppState()
-        print("AppState created successfully")
-        print("Theme mode: \(appState.themeMode)")
-        print("Sidebar visibility: \(appState.sidebarVisibility)")
-    }
-    
-    static func testViews() {
-        // Test that our views can be instantiated
-        let contentView = ContentView()
-        let settingsView = SettingsView()
-        let aboutView = AboutView()
+    static func main() async {
+        print("🧪 Running FileSystemService Tests")
+        print(String(repeating: "=", count: 50))
         
-        print("All views created successfully")
+        await runFileSystemServiceTests()
+        
+        print("\n" + String(repeating: "=", count: 50))
+        print("🏁 Test run completed")
     }
 }
-
-// Run tests
-#if DEBUG
-extension TestRunner {
-    static func runAllTests() {
-        testAppState()
-        testViews()
-        print("All tests passed!")
-    }
-}
-#endif
