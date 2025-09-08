@@ -152,7 +152,7 @@ struct ParsedCommand: Codable {
 }
 
 // MARK: - System Information
-struct SystemInfo: Codable {
+struct TaskSystemInfo: Codable {
     let batteryLevel: Double?
     let batteryIsCharging: Bool
     let availableStorage: Int64

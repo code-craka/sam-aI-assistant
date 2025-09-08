@@ -99,24 +99,67 @@ struct FunctionParameters: Codable {
 }
 
 // MARK: - Property Definition
-struct PropertyDefinition: Codable {
-    let type: String
-    let description: String
-    let enumValues: [String]?
-    let items: PropertyDefinition?
+indirect enum PropertyDefinition: Codable {
+    case simple(type: String, description: String, enumValues: [String]?)
+    case array(type: String, description: String, items: PropertyDefinition)
+    case object(type: String, description: String, properties: [String: PropertyDefinition])
+    
+    var type: String {
+        switch self {
+        case .simple(let type, _, _), .array(let type, _, _), .object(let type, _, _):
+            return type
+        }
+    }
+    
+    var description: String {
+        switch self {
+        case .simple(_, let description, _), .array(_, let description, _), .object(_, let description, _):
+            return description
+        }
+    }
     
     enum CodingKeys: String, CodingKey {
         case type
         case description
         case enumValues = "enum"
         case items
+        case properties
     }
     
-    init(type: String, description: String, enumValues: [String]? = nil, items: PropertyDefinition? = nil) {
-        self.type = type
-        self.description = description
-        self.enumValues = enumValues
-        self.items = items
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let type = try container.decode(String.self, forKey: .type)
+        let description = try container.decode(String.self, forKey: .description)
+        
+        if type == "array" {
+            let items = try container.decode(PropertyDefinition.self, forKey: .items)
+            self = .array(type: type, description: description, items: items)
+        } else if type == "object" {
+            let properties = try container.decodeIfPresent([String: PropertyDefinition].self, forKey: .properties) ?? [:]
+            self = .object(type: type, description: description, properties: properties)
+        } else {
+            let enumValues = try container.decodeIfPresent([String].self, forKey: .enumValues)
+            self = .simple(type: type, description: description, enumValues: enumValues)
+        }
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        
+        switch self {
+        case .simple(let type, let description, let enumValues):
+            try container.encode(type, forKey: .type)
+            try container.encode(description, forKey: .description)
+            try container.encodeIfPresent(enumValues, forKey: .enumValues)
+        case .array(let type, let description, let items):
+            try container.encode(type, forKey: .type)
+            try container.encode(description, forKey: .description)
+            try container.encode(items, forKey: .items)
+        case .object(let type, let description, let properties):
+            try container.encode(type, forKey: .type)
+            try container.encode(description, forKey: .description)
+            try container.encode(properties, forKey: .properties)
+        }
     }
 }
 

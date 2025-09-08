@@ -185,7 +185,7 @@ enum ChatModels {
     }
     
     // MARK: - Message State
-    enum MessageState {
+    enum MessageState: Codable {
         case normal
         case editing
         case deleting
@@ -203,14 +203,6 @@ enum ChatModels {
             self.message = message
             self.timestamp = Date()
         }
-    }
-    
-    // MARK: - Message State
-    enum MessageState: Codable {
-        case normal
-        case editing
-        case deleting
-        case deleted
     }
 
     // MARK: - Usage Metrics

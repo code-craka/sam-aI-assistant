@@ -26,16 +26,11 @@ class TaskRouter: ObservableObject {
     private let cloudTimeoutInterval: TimeInterval = 30.0
     
     // MARK: - Initialization
-    init(
-        taskClassifier: TaskClassifier = TaskClassifier(),
-        aiService: AIService = AIService(),
-        rateLimiter: RateLimiter = RateLimiter(),
-        costTracker: CostTracker = CostTracker()
-    ) {
-        self.taskClassifier = taskClassifier
-        self.aiService = aiService
-        self.rateLimiter = rateLimiter
-        self.costTracker = costTracker
+    init() {
+        self.taskClassifier = TaskClassifier()
+        self.aiService = AIService()
+        self.rateLimiter = RateLimiter()
+        self.costTracker = CostTracker()
         self.responseCache = ResponseCache()
         self.fallbackManager = FallbackManager()
     }

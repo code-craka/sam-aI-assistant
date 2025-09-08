@@ -1,0 +1,21 @@
+{
+  "enabled": true,
+  "name": "SwiftUI Project Refactor",
+  "description": "Monitors SwiftUI project files for changes and automatically analyzes and refactors the code to fix compilation errors, break up large files, fix async/await usage, remove duplicates, and update deprecated APIs",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "Sam/Views/*.swift",
+      "Sam/Managers/*.swift",
+      "Sam/Models/*.swift",
+      "Sam/Services/*.swift",
+      "Sam/Utils/*.swift",
+      "Sam/SamApp.swift"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Please analyze and refactor the SwiftUI project located at \"/Users/rihan/all-coding-project/sam-mac-ai-assistant/Sam/\" to fix all compilation errors and improve code structure.\n\n## Primary Tasks:\n1. **Break Up Large Files**:\n   - Split ContentView.swift into multiple smaller, focused files:\n     * MainChatView.swift - Main chat interface\n     * MessagesAreaView.swift - Messages display area\n     * InputAreaView.swift - Input field and controls\n     * SidebarView.swift - Navigation sidebar\n     * SettingsViews/ - Directory for all settings-related views\n\n2. **Fix Async/Await Usage**:\n   - Wrap all async function calls in Task blocks\n   - Ensure proper error handling for all async operations\n   - Update functions like chatManager.startNewConversation() and chatManager.clearHistory() to be properly called with Task\n\n3. **Remove Duplicate Declarations**:\n   - Identify and remove duplicate view declarations (SettingsView, GeneralSettingsView, etc.)\n   - Ensure each view is defined only once in its appropriate file\n   - Resolve ambiguous MessageState enum by consolidating to a single definition\n\n4. **Update Deprecated APIs**:\n   - Replace NSFileManager with FileManager\n   - Fix ByteCountFormatter countStyle to use appropriate values\n   - Fix Color.tertiary usage with proper alternatives\n   - Ensure NavigationSplitViewVisibility conforms to Hashable\n\n## Specific Fixes Needed:\n1. **ScrollViewReader Issues**:\n   - Change function parameter from ScrollViewReader to ScrollViewProxy\n   - Fix animation syntax to use nil instead of .none\n\n2. **NavigationSplitViewVisibility Hashable Conformance**:\n   - Add extension to make NavigationSplitViewVisibility Hashable\n\n3. **Top-Level Code Fix**:\n   - Move test execution code from top level to appropriate function or main entry point\n\n4. **Error Handling**:\n   - Add proper error handling for all throwing functions\n   - Ensure all async calls handle potential errors\n\n## Code Style Guidelines:\n- Use SwiftUI best practices\n- Add appropriate documentation comments\n- Ensure consistent naming conventions\n- Maintain proper separation of concerns\n- Use environment objects appropriately for state management\n\n## Testing:\n- Ensure the refactored code compiles without errors\n- Verify that all functionality remains intact\n- Check that async operations work correctly\n\nPlease proceed with these changes and provide a summary of what was modified."
+  }
+}

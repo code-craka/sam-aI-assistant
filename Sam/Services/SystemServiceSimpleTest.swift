@@ -163,11 +163,12 @@ private extension String {
     }
 }
 
-// Run the tests if this file is executed directly
-if CommandLine.arguments.contains("--run-system-tests") {
-    Task {
-        await SystemServiceSimpleTest.runTests()
-        exit(0)
+// MARK: - Test Runner
+@main
+struct SystemServiceTestRunner {
+    static func main() async {
+        if CommandLine.arguments.contains("--run-system-tests") {
+            await SystemServiceSimpleTest.runTests()
+        }
     }
-    RunLoop.main.run()
 }

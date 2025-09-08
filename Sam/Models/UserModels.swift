@@ -1,30 +1,39 @@
 import Foundation
 import SwiftUI
 
+// MARK: - UserModels Namespace
+enum UserModels {
+    // This enum serves as a namespace for user-related models
+}
+
 // MARK: - User Preferences
 struct UserPreferences: Codable {
     let id: UUID
-    var preferredModel: AIModel
+    var preferredModel: UserModels.AIModel
     var maxTokens: Int
     var temperature: Float
     var autoExecuteTasks: Bool
     var confirmDangerousOperations: Bool
-    var themeMode: ThemeMode
+    var themeMode: UserModels.ThemeMode
     var shortcuts: [TaskShortcut]
     var privacySettings: PrivacySettings
     var notificationSettings: NotificationSettings
+    var interfacePreferences: InterfacePreferences
+    var customThemeSettings: CustomThemeSettings?
     
     init(
         id: UUID = UUID(),
-        preferredModel: AIModel = .gpt4Turbo,
+        preferredModel: UserModels.AIModel = .gpt4Turbo,
         maxTokens: Int = 4000,
         temperature: Float = 0.7,
         autoExecuteTasks: Bool = false,
         confirmDangerousOperations: Bool = true,
-        themeMode: ThemeMode = .system,
+        themeMode: UserModels.ThemeMode = .system,
         shortcuts: [TaskShortcut] = [],
         privacySettings: PrivacySettings = PrivacySettings(),
-        notificationSettings: NotificationSettings = NotificationSettings()
+        notificationSettings: NotificationSettings = NotificationSettings(),
+        interfacePreferences: InterfacePreferences = InterfacePreferences(),
+        customThemeSettings: CustomThemeSettings? = nil
     ) {
         self.id = id
         self.preferredModel = preferredModel
@@ -36,11 +45,14 @@ struct UserPreferences: Codable {
         self.shortcuts = shortcuts
         self.privacySettings = privacySettings
         self.notificationSettings = notificationSettings
+        self.interfacePreferences = interfacePreferences
+        self.customThemeSettings = customThemeSettings
     }
 }
 
 // MARK: - AI Model Configuration
-enum AIModel: String, CaseIterable, Codable {
+extension UserModels {
+    enum AIModel: String, CaseIterable, Codable {
     case gpt4 = "gpt-4"
     case gpt4Turbo = "gpt-4-turbo-preview"
     case gpt35Turbo = "gpt-3.5-turbo"
@@ -74,8 +86,11 @@ enum AIModel: String, CaseIterable, Codable {
     }
 }
 
+}
+
 // MARK: - Theme Mode
-enum ThemeMode: String, CaseIterable, Codable {
+extension UserModels {
+    enum ThemeMode: String, CaseIterable, Codable {
     case light = "light"
     case dark = "dark"
     case system = "system"
@@ -95,6 +110,8 @@ enum ThemeMode: String, CaseIterable, Codable {
         case .system: return nil
         }
     }
+}
+
 }
 
 // MARK: - Task Shortcut
@@ -224,7 +241,7 @@ enum NotificationSound: String, CaseIterable, Codable {
 }
 
 // MARK: - Workflow Definition
-struct Workflow: Identifiable, Codable {
+struct WorkflowModel: Identifiable, Codable {
     let id: UUID
     let name: String
     let description: String
@@ -294,5 +311,225 @@ struct WorkflowStep: Identifiable, Codable {
         case conditional = "conditional"
         case delay = "delay"
         case notification = "notification"
+    }
+}
+
+// MARK: - Interface Preferences
+struct InterfacePreferences: Codable {
+    var compactMode: Bool
+    var showTimestamps: Bool
+    var groupMessages: Bool
+    var animationsEnabled: Bool
+    var soundEffectsEnabled: Bool
+    var messageSpacing: MessageSpacing
+    var fontScale: FontScale
+    var showTypingIndicators: Bool
+    var autoScrollToBottom: Bool
+    
+    init(
+        compactMode: Bool = false,
+        showTimestamps: Bool = true,
+        groupMessages: Bool = true,
+        animationsEnabled: Bool = true,
+        soundEffectsEnabled: Bool = true,
+        messageSpacing: MessageSpacing = .normal,
+        fontScale: FontScale = .normal,
+        showTypingIndicators: Bool = true,
+        autoScrollToBottom: Bool = true
+    ) {
+        self.compactMode = compactMode
+        self.showTimestamps = showTimestamps
+        self.groupMessages = groupMessages
+        self.animationsEnabled = animationsEnabled
+        self.soundEffectsEnabled = soundEffectsEnabled
+        self.messageSpacing = messageSpacing
+        self.fontScale = fontScale
+        self.showTypingIndicators = showTypingIndicators
+        self.autoScrollToBottom = autoScrollToBottom
+    }
+}
+
+enum MessageSpacing: String, CaseIterable, Codable {
+    case compact = "compact"
+    case normal = "normal"
+    case comfortable = "comfortable"
+    
+    var displayName: String {
+        switch self {
+        case .compact: return "Compact"
+        case .normal: return "Normal"
+        case .comfortable: return "Comfortable"
+        }
+    }
+    
+    var spacing: CGFloat {
+        switch self {
+        case .compact: return 8
+        case .normal: return 12
+        case .comfortable: return 16
+        }
+    }
+}
+
+enum FontScale: String, CaseIterable, Codable {
+    case small = "small"
+    case normal = "normal"
+    case large = "large"
+    case extraLarge = "extraLarge"
+    
+    var displayName: String {
+        switch self {
+        case .small: return "Small"
+        case .normal: return "Normal"
+        case .large: return "Large"
+        case .extraLarge: return "Extra Large"
+        }
+    }
+    
+    var scale: CGFloat {
+        switch self {
+        case .small: return 0.9
+        case .normal: return 1.0
+        case .large: return 1.1
+        case .extraLarge: return 1.2
+        }
+    }
+}
+
+// MARK: - Custom Theme Settings
+struct CustomThemeSettings: Codable {
+    var accentColor: String
+    var backgroundColor: String
+    var textColor: String
+    var messageBackgroundColor: String
+    var borderRadius: Double
+    var useCustomColors: Bool
+    
+    init(
+        accentColor: String = "#007AFF",
+        backgroundColor: String = "#FFFFFF",
+        textColor: String = "#000000",
+        messageBackgroundColor: String = "#F2F2F7",
+        borderRadius: Double = 18.0,
+        useCustomColors: Bool = false
+    ) {
+        self.accentColor = accentColor
+        self.backgroundColor = backgroundColor
+        self.textColor = textColor
+        self.messageBackgroundColor = messageBackgroundColor
+        self.borderRadius = borderRadius
+        self.useCustomColors = useCustomColors
+    }
+}
+
+// MARK: - Keyboard Shortcut Configuration
+struct KeyboardShortcutConfiguration: Codable {
+    var globalShortcuts: [String: String] // Action -> Key combination
+    var chatShortcuts: [String: String]
+    var customShortcuts: [String: String]
+    
+    init() {
+        self.globalShortcuts = [
+            "newChat": "⌘N",
+            "openSettings": "⌘,",
+            "toggleSidebar": "⌘S",
+            "clearChat": "⌘K"
+        ]
+        
+        self.chatShortcuts = [
+            "sendMessage": "⌘↩",
+            "newLine": "⇧↩",
+            "focusInput": "⌘L",
+            "scrollToTop": "⌘↑",
+            "scrollToBottom": "⌘↓"
+        ]
+        
+        self.customShortcuts = [:]
+    }
+}
+
+// MARK: - Command Alias
+struct CommandAlias: Identifiable, Codable {
+    let id: UUID
+    let alias: String
+    let command: String
+    let description: String
+    let category: TaskType
+    let isEnabled: Bool
+    let createdAt: Date
+    var usageCount: Int
+    
+    init(
+        id: UUID = UUID(),
+        alias: String,
+        command: String,
+        description: String = "",
+        category: TaskType = .settings,
+        isEnabled: Bool = true,
+        createdAt: Date = Date(),
+        usageCount: Int = 0
+    ) {
+        self.id = id
+        self.alias = alias
+        self.command = command
+        self.description = description
+        self.category = category
+        self.isEnabled = isEnabled
+        self.createdAt = createdAt
+        self.usageCount = usageCount
+    }
+}
+
+// MARK: - Data Usage Summary
+struct DataUsageSummary: Codable {
+    let conversationCount: Int
+    let totalMessages: Int
+    let shortcutsCount: Int
+    let aliasesCount: Int
+    let storageUsed: Int64 // in bytes
+    let lastBackup: Date?
+    let dataRetentionDays: Int
+    
+    init(
+        conversationCount: Int = 0,
+        totalMessages: Int = 0,
+        shortcutsCount: Int = 0,
+        aliasesCount: Int = 0,
+        storageUsed: Int64 = 0,
+        lastBackup: Date? = nil,
+        dataRetentionDays: Int = 30
+    ) {
+        self.conversationCount = conversationCount
+        self.totalMessages = totalMessages
+        self.shortcutsCount = shortcutsCount
+        self.aliasesCount = aliasesCount
+        self.storageUsed = storageUsed
+        self.lastBackup = lastBackup
+        self.dataRetentionDays = dataRetentionDays
+    }
+}
+
+// MARK: - User Data Export
+struct UserDataExport: Codable {
+    let preferences: UserPreferences
+    let shortcuts: [TaskShortcut]
+    let aliases: [CommandAlias]
+    let customSettings: [String: String]
+    let exportDate: Date
+    let version: String
+    
+    init(
+        preferences: UserPreferences,
+        shortcuts: [TaskShortcut] = [],
+        aliases: [CommandAlias] = [],
+        customSettings: [String: String] = [:],
+        version: String = "1.0.0"
+    ) {
+        self.preferences = preferences
+        self.shortcuts = shortcuts
+        self.aliases = aliases
+        self.customSettings = customSettings
+        self.exportDate = Date()
+        self.version = version
     }
 }

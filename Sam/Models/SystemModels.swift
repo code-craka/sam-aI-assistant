@@ -91,7 +91,7 @@ struct VolumeInfo: Codable, Equatable, Identifiable {
 }
 
 /// Memory information structure
-struct MemoryInfo: Codable, Equatable {
+struct SystemMemoryInfo: Codable, Equatable {
     let totalMemory: Int64 // in bytes
     let usedMemory: Int64 // in bytes
     let availableMemory: Int64 // in bytes
@@ -201,7 +201,7 @@ struct WiFiInfo: Codable, Equatable {
 }
 
 /// Running application information
-struct AppInfo: Codable, Equatable, Identifiable {
+struct SystemAppInfo: Codable, Equatable, Identifiable {
     let id = UUID()
     let bundleIdentifier: String
     let name: String
@@ -251,10 +251,10 @@ struct CPUInfo: Codable, Equatable {
 struct SystemInfo: Codable, Equatable {
     let battery: BatteryInfo?
     let storage: StorageInfo
-    let memory: MemoryInfo
+    let memory: SystemMemoryInfo
     let network: NetworkInfo
     let cpu: CPUInfo
-    let runningApps: [AppInfo]
+    let runningApps: [SystemAppInfo]
     let timestamp: Date
     let systemVersion: String
     let systemBuild: String
