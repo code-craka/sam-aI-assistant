@@ -95,7 +95,8 @@ class AppIntegrationSimpleTest {
         print("-" * 30)
         
         // Test CommandDefinition
-        let commandDef = CommandDefinition(
+        let commandDef = CommandDefinition(vvcccbdendhhfhnlctrunhbdrgkkjtbfjkcedtrduidc
+        
             name: "test_command",
             description: "A test command",
             parameters: [

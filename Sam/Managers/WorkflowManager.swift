@@ -1,358 +1,430 @@
+//
+//  WorkflowManager.swift
+//  Sam
+//
+//  Created by AI Assistant on 2024-01-01.
+//
+
 import Foundation
-import SwiftUI
+import Combine
+import CoreData
 
 @MainActor
 class WorkflowManager: ObservableObject {
-    @Published var workflows: [Workflow] = []
-    @Published var isExecutingWorkflow = false
-    @Published var currentWorkflow: Workflow?
-    @Published var currentStepIndex = 0
-    @Published var executionProgress: Double = 0.0
-    @Published var executionLog: [WorkflowExecutionLogEntry] = []
+    @Published var workflows: [WorkflowDefinition] = []
+    @Published var isExecuting = false
+    @Published var currentExecution: WorkflowExecutionContext?
+    @Published var executionHistory: [WorkflowExecutionResult] = []
+    @Published var scheduledWorkflows: [ScheduledWorkflow] = []
     
-    private let taskManager = TaskManager()
+    private let workflowExecutor: WorkflowExecutor
+    private let workflowScheduler: WorkflowScheduler
+    private let workflowBuilder: WorkflowBuilder
+    private let persistenceController: PersistenceController
+    
+    private var cancellables = Set<AnyCancellable>()
     
     init() {
+        self.workflowExecutor = WorkflowExecutor()
+        self.workflowScheduler = WorkflowScheduler()
+        self.workflowBuilder = WorkflowBuilder()
+        self.persistenceController = PersistenceController.shared
+        
+        setupBindings()
         loadWorkflows()
     }
     
     // MARK: - Public Methods
     
-    func createWorkflow(from description: String) async throws -> Workflow {
-        // TODO: Implement workflow creation from natural language
-        // For now, create a simple placeholder workflow
+    func createWorkflowFromDescription(_ description: String, name: String? = nil) async throws -> WorkflowDefinition {
+        let workflow = try await workflowBuilder.buildWorkflowFromDescription(description, name: name)
         
-        let workflow = Workflow(
-            name: "Custom Workflow",
-            description: description,
-            steps: [],
-            category: .automation,
-            estimatedDuration: 30.0
-        )
+        // Validate the workflow
+        let validationResult = try await workflowBuilder.validateWorkflow(workflow)
+        if !validationResult.isValid {
+            let errorMessage = validationResult.issues.map { $0.message }.joined(separator: ", ")
+            throw WorkflowError.invalidParameters(stepName: "Workflow", parameter: errorMessage)
+        }
         
-        workflows.append(workflow)
-        saveWorkflows()
+        // Save the workflow
+        try await saveWorkflow(workflow)
         
         return workflow
     }
     
-    func executeWorkflow(_ workflow: Workflow) async throws {
-        guard !isExecutingWorkflow else {
-            throw WorkflowError.workflowAlreadyRunning
+    func createWorkflowFromTemplate(_ template: WorkflowTemplate, parameters: [String: Any]) async throws -> WorkflowDefinition {
+        let workflow = try await workflowBuilder.buildWorkflowFromTemplate(template, parameters: parameters)
+        try await saveWorkflow(workflow)
+        return workflow
+    }
+    
+    func executeWorkflow(_ workflowId: UUID) async throws -> WorkflowExecutionResult {
+        guard let workflow = workflows.first(where: { $0.id == workflowId }) else {
+            throw WorkflowError.workflowNotFound(id: workflowId)
         }
         
-        isExecutingWorkflow = true
-        currentWorkflow = workflow
-        currentStepIndex = 0
-        executionProgress = 0.0
-        executionLog.removeAll()
+        let result = try await workflowExecutor.executeWorkflow(workflow)
+        executionHistory.append(result)
         
-        defer {
-            isExecutingWorkflow = false
-            currentWorkflow = nil
-            currentStepIndex = 0
-            executionProgress = 0.0
+        // Save execution result
+        try await saveExecutionResult(result)
+        
+        return result
+    }
+    
+    func executeWorkflowManually(_ workflow: WorkflowDefinition) async throws -> WorkflowExecutionResult {
+        let result = try await workflowExecutor.executeWorkflow(workflow)
+        executionHistory.append(result)
+        
+        // Save execution result
+        try await saveExecutionResult(result)
+        
+        return result
+    }
+    
+    func pauseCurrentExecution() {
+        workflowExecutor.pauseExecution()
+    }
+    
+    func resumeCurrentExecution() {
+        workflowExecutor.resumeExecution()
+    }
+    
+    func cancelCurrentExecution() {
+        workflowExecutor.cancelExecution()
+    }
+    
+    func scheduleWorkflow(_ workflowId: UUID) throws {
+        guard let workflow = workflows.first(where: { $0.id == workflowId }) else {
+            throw WorkflowError.workflowNotFound(id: workflowId)
         }
         
-        do {
-            logExecution("Starting workflow: \(workflow.name)", type: .info)
-            
-            for (index, step) in workflow.steps.enumerated() {
-                currentStepIndex = index
-                executionProgress = Double(index) / Double(workflow.steps.count)
-                
-                try await executeWorkflowStep(step, workflowId: workflow.id)
-                
-                // Update progress
-                executionProgress = Double(index + 1) / Double(workflow.steps.count)
-            }
-            
-            logExecution("Workflow completed successfully", type: .success)
-            updateWorkflowExecutionCount(workflow.id)
-            
-        } catch {
-            logExecution("Workflow failed: \(error.localizedDescription)", type: .error)
-            throw error
+        workflowScheduler.scheduleWorkflow(workflow)
+    }
+    
+    func unscheduleWorkflow(_ workflowId: UUID) {
+        workflowScheduler.unscheduleWorkflow(workflowId)
+    }
+    
+    func updateWorkflow(_ workflow: WorkflowDefinition) async throws {
+        // Validate the updated workflow
+        let validationResult = try await workflowBuilder.validateWorkflow(workflow)
+        if !validationResult.isValid {
+            let errorMessage = validationResult.issues.map { $0.message }.joined(separator: ", ")
+            throw WorkflowError.invalidParameters(stepName: "Workflow", parameter: errorMessage)
+        }
+        
+        // Update in memory
+        if let index = workflows.firstIndex(where: { $0.id == workflow.id }) {
+            workflows[index] = workflow
+        }
+        
+        // Save to persistence
+        try await saveWorkflow(workflow)
+        
+        // Reschedule if it was scheduled
+        if scheduledWorkflows.contains(where: { $0.workflowId == workflow.id }) {
+            workflowScheduler.unscheduleWorkflow(workflow.id)
+            workflowScheduler.scheduleWorkflow(workflow)
         }
     }
     
-    func cancelWorkflowExecution() {
-        guard isExecutingWorkflow else { return }
+    func deleteWorkflow(_ workflowId: UUID) async throws {
+        // Unschedule if scheduled
+        workflowScheduler.unscheduleWorkflow(workflowId)
         
-        logExecution("Workflow execution cancelled by user", type: .warning)
-        isExecutingWorkflow = false
-        currentWorkflow = nil
-        currentStepIndex = 0
-        executionProgress = 0.0
+        // Remove from memory
+        workflows.removeAll { $0.id == workflowId }
+        
+        // Delete from persistence
+        try await deleteWorkflowFromStorage(workflowId)
     }
     
-    func deleteWorkflow(_ workflow: Workflow) {
-        workflows.removeAll { $0.id == workflow.id }
-        saveWorkflows()
-    }
-    
-    func duplicateWorkflow(_ workflow: Workflow) -> Workflow {
-        let duplicatedWorkflow = Workflow(
-            name: "\(workflow.name) Copy",
-            description: workflow.description,
-            steps: workflow.steps,
-            category: workflow.category,
-            estimatedDuration: workflow.estimatedDuration
+    func duplicateWorkflow(_ workflowId: UUID, newName: String? = nil) async throws -> WorkflowDefinition {
+        guard let originalWorkflow = workflows.first(where: { $0.id == workflowId }) else {
+            throw WorkflowError.workflowNotFound(id: workflowId)
+        }
+        
+        let duplicatedWorkflow = WorkflowDefinition(
+            name: newName ?? "\(originalWorkflow.name) Copy",
+            description: originalWorkflow.description,
+            steps: originalWorkflow.steps,
+            variables: originalWorkflow.variables,
+            triggers: originalWorkflow.triggers,
+            isEnabled: false, // Start disabled
+            tags: originalWorkflow.tags
         )
         
-        workflows.append(duplicatedWorkflow)
-        saveWorkflows()
-        
+        try await saveWorkflow(duplicatedWorkflow)
         return duplicatedWorkflow
+    }
+    
+    func optimizeWorkflow(_ workflowId: UUID) async throws -> WorkflowDefinition {
+        guard let workflow = workflows.first(where: { $0.id == workflowId }) else {
+            throw WorkflowError.workflowNotFound(id: workflowId)
+        }
+        
+        let optimizedWorkflow = try await workflowBuilder.optimizeWorkflow(workflow)
+        try await updateWorkflow(optimizedWorkflow)
+        
+        return optimizedWorkflow
+    }
+    
+    func getWorkflowExecutionHistory(_ workflowId: UUID) -> [WorkflowExecutionResult] {
+        return executionHistory.filter { $0.workflowId == workflowId }
+    }
+    
+    func getWorkflowsByTag(_ tag: String) -> [WorkflowDefinition] {
+        return workflows.filter { $0.tags.contains(tag) }
+    }
+    
+    func searchWorkflows(_ query: String) -> [WorkflowDefinition] {
+        let lowercaseQuery = query.lowercased()
+        return workflows.filter { workflow in
+            workflow.name.lowercased().contains(lowercaseQuery) ||
+            workflow.description.lowercased().contains(lowercaseQuery) ||
+            workflow.tags.contains { $0.lowercased().contains(lowercaseQuery) }
+        }
+    }
+    
+    func exportWorkflow(_ workflowId: UUID) throws -> Data {
+        guard let workflow = workflows.first(where: { $0.id == workflowId }) else {
+            throw WorkflowError.workflowNotFound(id: workflowId)
+        }
+        
+        return try JSONEncoder().encode(workflow)
+    }
+    
+    func importWorkflow(from data: Data) async throws -> WorkflowDefinition {
+        let workflow = try JSONDecoder().decode(WorkflowDefinition.self, from: data)
+        
+        // Generate new ID to avoid conflicts
+        let importedWorkflow = WorkflowDefinition(
+            name: "\(workflow.name) (Imported)",
+            description: workflow.description,
+            steps: workflow.steps,
+            variables: workflow.variables,
+            triggers: workflow.triggers,
+            isEnabled: false, // Start disabled
+            tags: workflow.tags + ["imported"]
+        )
+        
+        try await saveWorkflow(importedWorkflow)
+        return importedWorkflow
+    }
+    
+    func startMonitoring() {
+        workflowScheduler.startMonitoring()
+    }
+    
+    func stopMonitoring() {
+        workflowScheduler.stopMonitoring()
     }
     
     // MARK: - Private Methods
     
-    private func executeWorkflowStep(_ step: WorkflowStep, workflowId: UUID) async throws {
-        logExecution("Executing step: \(step.description)", type: .info)
+    private func setupBindings() {
+        // Bind executor state
+        workflowExecutor.$isExecuting
+            .assign(to: &$isExecuting)
         
-        var retryCount = 0
-        let maxRetries = step.retryCount
+        workflowExecutor.$currentExecution
+            .assign(to: &$currentExecution)
         
-        while retryCount <= maxRetries {
+        workflowExecutor.$executionHistory
+            .assign(to: &$executionHistory)
+        
+        // Bind scheduler state
+        workflowScheduler.$scheduledWorkflows
+            .assign(to: &$scheduledWorkflows)
+    }
+    
+    private func loadWorkflows() {
+        Task {
             do {
-                try await performStepExecution(step)
-                logExecution("Step completed successfully", type: .success)
-                return
+                let loadedWorkflows = try await loadWorkflowsFromStorage()
+                await MainActor.run {
+                    self.workflows = loadedWorkflows
+                }
                 
+                // Schedule enabled workflows
+                for workflow in loadedWorkflows where workflow.isEnabled {
+                    workflowScheduler.scheduleWorkflow(workflow)
+                }
             } catch {
-                retryCount += 1
+                print("Failed to load workflows: \(error)")
+            }
+        }
+    }
+    
+    private func saveWorkflow(_ workflow: WorkflowDefinition) async throws {
+        // Update in memory
+        if let index = workflows.firstIndex(where: { $0.id == workflow.id }) {
+            workflows[index] = workflow
+        } else {
+            workflows.append(workflow)
+        }
+        
+        // Save to Core Data
+        try await persistenceController.performBackgroundTask { context in
+            let workflowEntity = Workflow(context: context)
+            workflowEntity.id = workflow.id
+            workflowEntity.name = workflow.name
+            workflowEntity.descriptionText = workflow.description
+            workflowEntity.isEnabled = workflow.isEnabled
+            workflowEntity.createdAt = workflow.createdAt
+            workflowEntity.lastExecuted = nil
+            workflowEntity.executionCount = 0
+            
+            // Encode steps as JSON
+            let stepsData = try JSONEncoder().encode(workflow.steps)
+            workflowEntity.stepsData = stepsData
+            
+            try context.save()
+        }
+    }
+    
+    private func loadWorkflowsFromStorage() async throws -> [WorkflowDefinition] {
+        return try await persistenceController.performBackgroundTask { context in
+            let request: NSFetchRequest<Workflow> = Workflow.fetchRequest()
+            let workflowEntities = try context.fetch(request)
+            
+            return workflowEntities.compactMap { entity in
+                guard let id = entity.id,
+                      let name = entity.name,
+                      let description = entity.descriptionText,
+                      let stepsData = entity.stepsData,
+                      let createdAt = entity.createdAt else {
+                    return nil
+                }
                 
-                if retryCount <= maxRetries {
-                    logExecution("Step failed, retrying (\(retryCount)/\(maxRetries)): \(error.localizedDescription)", type: .warning)
-                    try await Task.sleep(nanoseconds: 1_000_000_000) // Wait 1 second before retry
-                } else {
-                    logExecution("Step failed after \(maxRetries) retries: \(error.localizedDescription)", type: .error)
+                do {
+                    let steps = try JSONDecoder().decode([WorkflowStepDefinition].self, from: stepsData)
                     
-                    if step.continueOnError {
-                        logExecution("Continuing workflow despite step failure", type: .warning)
-                        return
-                    } else {
-                        throw error
-                    }
+                    return WorkflowDefinition(
+                        id: id,
+                        name: name,
+                        description: description,
+                        steps: steps,
+                        isEnabled: entity.isEnabled,
+                        createdAt: createdAt
+                    )
+                } catch {
+                    print("Failed to decode workflow steps: \(error)")
+                    return nil
                 }
             }
         }
     }
     
-    private func performStepExecution(_ step: WorkflowStep) async throws {
-        switch step.type {
-        case .fileOperation:
-            try await executeFileOperationStep(step)
+    private func deleteWorkflowFromStorage(_ workflowId: UUID) async throws {
+        try await persistenceController.performBackgroundTask { context in
+            let request: NSFetchRequest<Workflow> = Workflow.fetchRequest()
+            request.predicate = NSPredicate(format: "id == %@", workflowId as CVarArg)
             
-        case .systemCommand:
-            try await executeSystemCommandStep(step)
+            let workflows = try context.fetch(request)
+            for workflow in workflows {
+                context.delete(workflow)
+            }
             
-        case .appIntegration:
-            try await executeAppIntegrationStep(step)
-            
-        case .userInput:
-            try await executeUserInputStep(step)
-            
-        case .conditional:
-            try await executeConditionalStep(step)
-            
-        case .delay:
-            try await executeDelayStep(step)
-            
-        case .notification:
-            try await executeNotificationStep(step)
+            try context.save()
         }
     }
     
-    private func executeFileOperationStep(_ step: WorkflowStep) async throws {
-        // TODO: Implement file operation step execution
-        logExecution("File operation: \(step.parameters)", type: .info)
-    }
-    
-    private func executeSystemCommandStep(_ step: WorkflowStep) async throws {
-        // TODO: Implement system command step execution
-        logExecution("System command: \(step.parameters)", type: .info)
-    }
-    
-    private func executeAppIntegrationStep(_ step: WorkflowStep) async throws {
-        // TODO: Implement app integration step execution
-        logExecution("App integration: \(step.parameters)", type: .info)
-    }
-    
-    private func executeUserInputStep(_ step: WorkflowStep) async throws {
-        // TODO: Implement user input step execution
-        logExecution("User input required: \(step.description)", type: .info)
-    }
-    
-    private func executeConditionalStep(_ step: WorkflowStep) async throws {
-        // TODO: Implement conditional step execution
-        logExecution("Conditional check: \(step.parameters)", type: .info)
-    }
-    
-    private func executeDelayStep(_ step: WorkflowStep) async throws {
-        guard let delayString = step.parameters["duration"],
-              let delay = TimeInterval(delayString) else {
-            throw WorkflowError.invalidStepParameters
-        }
-        
-        logExecution("Waiting for \(delay) seconds", type: .info)
-        try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
-    }
-    
-    private func executeNotificationStep(_ step: WorkflowStep) async throws {
-        guard let message = step.parameters["message"] else {
-            throw WorkflowError.invalidStepParameters
-        }
-        
-        // TODO: Show system notification
-        logExecution("Notification: \(message)", type: .info)
-    }
-    
-    private func logExecution(_ message: String, type: WorkflowExecutionLogEntry.LogType) {
-        let logEntry = WorkflowExecutionLogEntry(
-            message: message,
-            type: type,
-            stepIndex: currentStepIndex
-        )
-        executionLog.append(logEntry)
-    }
-    
-    private func loadWorkflows() {
-        // TODO: Load workflows from Core Data
-        // For now, create some sample workflows
-        workflows = createSampleWorkflows()
-    }
-    
-    private func saveWorkflows() {
-        // TODO: Save workflows to Core Data
-    }
-    
-    private func updateWorkflowExecutionCount(_ workflowId: UUID) {
-        if let index = workflows.firstIndex(where: { $0.id == workflowId }) {
-            let workflow = workflows[index]
-            workflows[index] = Workflow(
-                id: workflow.id,
-                name: workflow.name,
-                description: workflow.description,
-                steps: workflow.steps,
-                createdAt: workflow.createdAt,
-                lastExecuted: Date(),
-                executionCount: workflow.executionCount + 1,
-                isEnabled: workflow.isEnabled,
-                category: workflow.category,
-                estimatedDuration: workflow.estimatedDuration
-            )
-            saveWorkflows()
-        }
-    }
-    
-    private func createSampleWorkflows() -> [Workflow] {
-        let cleanupWorkflow = Workflow(
-            name: "Daily Cleanup",
-            description: "Clean up Downloads folder and empty trash",
-            steps: [
-                WorkflowStep(
-                    type: .fileOperation,
-                    parameters: ["action": "organize", "path": "~/Downloads"],
-                    description: "Organize Downloads folder"
-                ),
-                WorkflowStep(
-                    type: .systemCommand,
-                    parameters: ["command": "empty_trash"],
-                    description: "Empty trash"
-                ),
-                WorkflowStep(
-                    type: .notification,
-                    parameters: ["message": "Daily cleanup completed"],
-                    description: "Show completion notification"
-                )
-            ],
-            category: .automation,
-            estimatedDuration: 60.0
-        )
-        
-        let backupWorkflow = Workflow(
-            name: "Document Backup",
-            description: "Backup important documents to external drive",
-            steps: [
-                WorkflowStep(
-                    type: .fileOperation,
-                    parameters: ["action": "backup", "source": "~/Documents", "destination": "/Volumes/Backup"],
-                    description: "Backup Documents folder"
-                ),
-                WorkflowStep(
-                    type: .notification,
-                    parameters: ["message": "Document backup completed"],
-                    description: "Show completion notification"
-                )
-            ],
-            category: .automation,
-            estimatedDuration: 300.0
-        )
-        
-        return [cleanupWorkflow, backupWorkflow]
+    private func saveExecutionResult(_ result: WorkflowExecutionResult) async throws {
+        // In a real implementation, we would save execution results to Core Data
+        // For now, we'll just keep them in memory
+        print("Execution result saved: \(result.executionId)")
     }
 }
 
-// MARK: - Supporting Types
+// MARK: - Workflow Templates
 
-struct WorkflowExecutionLogEntry: Identifiable {
-    let id = UUID()
-    let message: String
-    let type: LogType
-    let timestamp: Date
-    let stepIndex: Int
-    
-    init(message: String, type: LogType, stepIndex: Int) {
-        self.message = message
-        self.type = type
-        self.timestamp = Date()
-        self.stepIndex = stepIndex
-    }
-    
-    enum LogType {
-        case info
-        case success
-        case warning
-        case error
+extension WorkflowManager {
+    static let builtInTemplates: [WorkflowTemplate] = [
+        WorkflowTemplate(
+            name: "Daily File Cleanup",
+            description: "Clean up Downloads folder and organize Desktop files",
+            steps: [
+                WorkflowStepDefinition(
+                    name: "Clean Downloads folder",
+                    type: .fileOperation,
+                    parameters: [
+                        "operation": "organize",
+                        "path": "~/Downloads",
+                        "strategy": "by_date"
+                    ]
+                ),
+                WorkflowStepDefinition(
+                    name: "Organize Desktop",
+                    type: .fileOperation,
+                    parameters: [
+                        "operation": "organize",
+                        "path": "~/Desktop",
+                        "strategy": "by_type"
+                    ]
+                ),
+                WorkflowStepDefinition(
+                    name: "Send completion notification",
+                    type: .notification,
+                    parameters: [
+                        "title": "File Cleanup Complete",
+                        "message": "Downloads and Desktop have been organized"
+                    ]
+                )
+            ],
+            variables: [:],
+            triggers: [
+                WorkflowTrigger(
+                    type: .scheduled,
+                    parameters: ["schedule": "0 9 * * *"] // Daily at 9 AM
+                )
+            ],
+            tags: ["cleanup", "organization", "daily"]
+        ),
         
-        var color: Color {
-            switch self {
-            case .info: return .primary
-            case .success: return .green
-            case .warning: return .orange
-            case .error: return .red
-            }
-        }
-        
-        var icon: String {
-            switch self {
-            case .info: return "info.circle"
-            case .success: return "checkmark.circle"
-            case .warning: return "exclamationmark.triangle"
-            case .error: return "xmark.circle"
-            }
-        }
-    }
-}
-
-enum WorkflowError: LocalizedError {
-    case workflowAlreadyRunning
-    case invalidStepParameters
-    case stepExecutionFailed(String)
-    case workflowNotFound
-    
-    var errorDescription: String? {
-        switch self {
-        case .workflowAlreadyRunning:
-            return "A workflow is already running"
-        case .invalidStepParameters:
-            return "Invalid parameters for workflow step"
-        case .stepExecutionFailed(let message):
-            return "Step execution failed: \(message)"
-        case .workflowNotFound:
-            return "Workflow not found"
-        }
-    }
+        WorkflowTemplate(
+            name: "Project Backup",
+            description: "Backup project files to external drive",
+            steps: [
+                WorkflowStepDefinition(
+                    name: "Copy project files",
+                    type: .fileOperation,
+                    parameters: [
+                        "operation": "copy",
+                        "source": "{{project_path}}",
+                        "destination": "{{backup_path}}/{{project_name}}_backup_{{date}}"
+                    ]
+                ),
+                WorkflowStepDefinition(
+                    name: "Verify backup",
+                    type: .fileOperation,
+                    parameters: [
+                        "operation": "verify",
+                        "path": "{{backup_path}}/{{project_name}}_backup_{{date}}"
+                    ]
+                ),
+                WorkflowStepDefinition(
+                    name: "Send backup notification",
+                    type: .notification,
+                    parameters: [
+                        "title": "Backup Complete",
+                        "message": "{{project_name}} has been backed up successfully"
+                    ]
+                )
+            ],
+            variables: [
+                "project_path": AnyCodable(""),
+                "backup_path": AnyCodable(""),
+                "project_name": AnyCodable(""),
+                "date": AnyCodable("")
+            ],
+            triggers: [
+                WorkflowTrigger(
+                    type: .manual
+                )
+            ],
+            tags: ["backup", "project", "safety"]
+        )
+    ]
 }

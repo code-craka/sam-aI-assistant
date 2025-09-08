@@ -92,4 +92,5 @@ extension Notification.Name {
     static let focusChatInputRequested = Notification.Name("focusChatInputRequested")
     static let helpRequested = Notification.Name("helpRequested")
     static let aboutRequested = Notification.Name("aboutRequested")
+    static let switchToWorkflowsRequested = Notification.Name("switchToWorkflowsRequested")
 }

@@ -6,36 +6,70 @@ struct ContentView: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var chatManager = ChatManager()
     @State private var showingAbout = false
+    @State private var showingWorkflows = false
+    @State private var selectedTab: MainTab = .chat
+    
+    enum MainTab: String, CaseIterable {
+        case chat = "Chat"
+        case workflows = "Workflows"
+        
+        var icon: String {
+            switch self {
+            case .chat:
+                return "message"
+            case .workflows:
+                return "gearshape.2"
+            }
+        }
+    }
     
     var body: some View {
-        NavigationSplitView(columnVisibility: $appState.sidebarVisibility) {
-            // Sidebar - Chat History
-            SidebarView()
-                .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 300)
-                .environmentObject(chatManager)
-        } detail: {
-            // Main Chat Interface
-            ChatView()
-                .environmentObject(chatManager)
+        TabView(selection: $selectedTab) {
+            // Chat Interface
+            NavigationSplitView(columnVisibility: $appState.sidebarVisibility) {
+                // Sidebar - Chat History
+                SidebarView()
+                    .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 300)
+                    .environmentObject(chatManager)
+            } detail: {
+                // Main Chat Interface
+                ChatView()
+                    .environmentObject(chatManager)
+            }
+            .tabItem {
+                Label("Chat", systemImage: "message")
+            }
+            .tag(MainTab.chat)
+            
+            // Workflow Management
+            WorkflowView()
+                .tabItem {
+                    Label("Workflows", systemImage: "gearshape.2")
+                }
+                .tag(MainTab.workflows)
         }
-        .navigationTitle(appState.windowTitle)
+        .navigationTitle(selectedTab == .chat ? appState.windowTitle : "Workflow Manager")
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
-                Button(action: {
-                    chatManager.startNewConversation()
-                }) {
-                    Image(systemName: "plus.message")
+                if selectedTab == .chat {
+                    Button(action: {
+                        Task {
+                            await chatManager.startNewConversation()
+                        }
+                    }) {
+                        Image(systemName: "plus.message")
+                    }
+                    .help("New Chat")
+                    .accessibilityLabel("Start new chat")
+                    
+                    Button(action: {
+                        appState.toggleSidebar()
+                    }) {
+                        Image(systemName: "sidebar.left")
+                    }
+                    .help("Toggle Sidebar")
+                    .accessibilityLabel("Toggle sidebar visibility")
                 }
-                .help("New Chat")
-                .accessibilityLabel("Start new chat")
-                
-                Button(action: {
-                    appState.toggleSidebar()
-                }) {
-                    Image(systemName: "sidebar.left")
-                }
-                .help("Toggle Sidebar")
-                .accessibilityLabel("Toggle sidebar visibility")
                 
                 Button(action: {
                     appState.openSettings()
@@ -47,16 +81,23 @@ struct ContentView: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .newChatRequested)) { _ in
-            chatManager.startNewConversation()
+            Task {
+                await chatManager.startNewConversation()
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: .clearChatRequested)) { _ in
-            chatManager.clearHistory()
+            Task {
+                await chatManager.clearHistory()
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: .toggleSidebarRequested)) { _ in
             appState.toggleSidebar()
         }
         .onReceive(NotificationCenter.default.publisher(for: .aboutRequested)) { _ in
             showingAbout = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .switchToWorkflowsRequested)) { _ in
+            selectedTab = .workflows
         }
         .sheet(isPresented: $showingAbout) {
             AboutView()
@@ -107,7 +148,7 @@ struct SidebarView: View {
                         if chatManager.messages.isEmpty {
                             Text("No previous chats")
                                 .font(.caption)
-                                .foregroundColor(.tertiary)
+                                .foregroundColor(.secondary)
                                 .padding(.top, 8)
                         } else {
                             ChatHistoryItem(
@@ -145,11 +186,7 @@ struct SidebarView: View {
                     title: "App Control",
                     action: "Help me control applications"
                 )
-                QuickActionButton(
-                    icon: "gearshape.2",
-                    title: "Workflows",
-                    action: "Show me workflow options"
-                )
+                WorkflowQuickActionButton()
             }
         }
         .padding()
@@ -199,12 +236,24 @@ struct QuickActionButton: View {
     let icon: String
     let title: String
     let action: String
+    let customAction: (() -> Void)?
     @EnvironmentObject private var chatManager: ChatManager
+    
+    init(icon: String, title: String, action: String, customAction: (() -> Void)? = nil) {
+        self.icon = icon
+        self.title = title
+        self.action = action
+        self.customAction = customAction
+    }
     
     var body: some View {
         Button(action: {
-            Task {
-                await chatManager.sendMessage(action)
+            if let customAction = customAction {
+                customAction()
+            } else {
+                Task {
+                    await chatManager.sendMessage(action)
+                }
             }
         }) {
             HStack {
@@ -221,7 +270,33 @@ struct QuickActionButton: View {
         .buttonStyle(.plain)
         .foregroundColor(.primary)
         .accessibilityLabel("Quick action: \(title)")
-        .help("Send: \(action)")
+        .help(customAction != nil ? title : "Send: \(action)")
+    }
+}
+
+struct WorkflowQuickActionButton: View {
+    @Environment(\.openWindow) private var openWindow
+    
+    var body: some View {
+        Button(action: {
+            // Switch to workflows tab - we'll need to pass this through the environment
+            NotificationCenter.default.post(name: .switchToWorkflowsRequested, object: nil)
+        }) {
+            HStack {
+                Image(systemName: "gearshape.2")
+                    .frame(width: 16)
+                    .accessibilityHidden(true)
+                Text("Workflows")
+                    .font(.caption)
+                Spacer()
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+        }
+        .buttonStyle(.plain)
+        .foregroundColor(.primary)
+        .accessibilityLabel("Quick action: Workflows")
+        .help("Open Workflow Manager")
     }
 }
 
@@ -298,15 +373,15 @@ struct ChatView: View {
         .accessibilityLabel("Chat interface")
     }
     
-    private func scrollToBottom(proxy: ScrollViewReader) {
-        let animation = appState.reduceMotion ? .none : .easeOut(duration: 0.3)
+    private func scrollToBottom(proxy: ScrollViewProxy) {
+        let animation = appState.reduceMotion ? Animation.none : Animation.easeOut(duration: 0.3)
         withAnimation(animation) {
             if let streamingMessage = chatManager.streamingMessage {
-                proxy.scrollTo(streamingMessage.id, anchor: .bottom)
+                proxy.scrollTo(streamingMessage.id, anchor: UnitPoint.bottom)
             } else if chatManager.typingIndicator.isVisible {
-                proxy.scrollTo("typing-indicator", anchor: .bottom)
+                proxy.scrollTo("typing-indicator", anchor: UnitPoint.bottom)
             } else if let lastMessage = chatManager.messages.last {
-                proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                proxy.scrollTo(lastMessage.id, anchor: UnitPoint.bottom)
             }
         }
     }
