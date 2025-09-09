@@ -9,6 +9,7 @@ class TaskClassifier: ObservableObject {
     
     private let nlTagger: NLTagger
     private let confidenceThreshold: Double = 0.7
+    private let performanceTracker = PerformanceTracker.shared
     
     // MARK: - Classification Patterns
     
@@ -182,6 +183,15 @@ class TaskClassifier: ObservableObject {
     /// - Parameter input: The user's natural language input
     /// - Returns: Classification result with confidence score and extracted parameters
     func classify(_ input: String) async -> TaskClassificationResult {
+        let operationId = "classify_\(UUID().uuidString.prefix(8))"
+        
+        return await performanceTracker.trackOperation(operationId, type: .taskClassification) {
+            return await performClassification(input)
+        }
+    }
+    
+    /// Internal method to perform the actual classification
+    private func performClassification(_ input: String) async -> TaskClassificationResult {
         let normalizedInput = normalizeInput(input)
         
         // Calculate scores for each task type

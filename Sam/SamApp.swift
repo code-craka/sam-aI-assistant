@@ -14,6 +14,7 @@ struct SamApp: App {
                 .preferredColorScheme(appState.colorScheme)
                 .onAppear {
                     setupAppearance()
+                    initializePerformanceMonitoring()
                 }
         }
         .windowStyle(.hiddenTitleBar)
@@ -35,6 +36,18 @@ struct SamApp: App {
     private func setupAppearance() {
         // Configure app-wide appearance settings
         NSApp.appearance = appState.nsAppearance
+    }
+    
+    private func initializePerformanceMonitoring() {
+        // Initialize performance monitoring system
+        PerformanceSetup.initializePerformanceMonitoring()
+        
+        #if DEBUG
+        // Run performance demo in debug builds
+        Task {
+            await PerformanceDemo.runQuickTest()
+        }
+        #endif
     }
 }
 

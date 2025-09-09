@@ -15,6 +15,7 @@ class AIService: ObservableObject {
     private let costTracker: CostTracker
     private let contextManager: ContextManager
     private let rateLimiter: RateLimiter
+    private let performanceTracker = PerformanceTracker.shared
     private var cancellables = Set<AnyCancellable>()
     
     // MARK: - Initialization
@@ -38,6 +39,9 @@ class AIService: ObservableObject {
     ) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
             Task {
+                let operationId = "ai_stream_\(UUID().uuidString.prefix(8))"
+                performanceTracker.startOperation(operationId, type: .aiProcessing)
+                
                 do {
                     // Check rate limits
                     try await rateLimiter.checkRateLimit()
@@ -93,9 +97,20 @@ class AIService: ObservableObject {
                         model: model
                     )
                     
+                    performanceTracker.endOperation(operationId, success: true, additionalData: [
+                        "model": model.rawValue,
+                        "tokens": totalTokens,
+                        "response_length": responseContent.count
+                    ])
+                    
                     continuation.finish()
                     
                 } catch {
+                    performanceTracker.endOperation(operationId, success: false, additionalData: [
+                        "error": error.localizedDescription,
+                        "model": model.rawValue
+                    ])
+                    
                     await MainActor.run {
                         self.connectionStatus = .error(error.localizedDescription)
                         self.isStreaming = false

@@ -19,6 +19,7 @@ class FileSystemService: ObservableObject {
     private let metadataService = MetadataExtractionService()
     private let duplicateService = DuplicateDetectionService()
     private let smartOrganizationService = SmartOrganizationService()
+    private let performanceTracker = PerformanceTracker.shared
 
     // MARK: - Safety Configuration
     private let maxFileSize: Int64 = 10_000_000_000  // 10GB limit
@@ -28,6 +29,15 @@ class FileSystemService: ObservableObject {
 
     /// Execute a file system operation
     func executeOperation(_ operation: FileOperation) async throws -> OperationResult {
+        let operationId = "fs_\(operation.operationType)_\(UUID().uuidString.prefix(8))"
+        
+        return try await performanceTracker.trackOperation(operationId, type: .fileOperation) {
+            return try await performOperation(operation)
+        }
+    }
+    
+    /// Internal method to perform the actual operation
+    private func performOperation(_ operation: FileOperation) async throws -> OperationResult {
         await MainActor.run {
             isProcessing = true
             currentOperation = operation.description

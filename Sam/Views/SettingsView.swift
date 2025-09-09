@@ -49,6 +49,12 @@ struct SettingsView: View {
                     Label("Accessibility", systemImage: "accessibility")
                 }
                 .environmentObject(settingsManager)
+            
+            PerformanceDashboardView()
+                .tabItem {
+                    Label("Performance", systemImage: "speedometer")
+                }
+                .environmentObject(settingsManager)
         }
         .frame(width: 700, height: 600)
         .accessibilityElement(children: .contain)
