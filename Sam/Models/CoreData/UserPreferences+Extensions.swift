@@ -159,6 +159,49 @@ extension UserPreferences {
         workflow.userPreferences = nil
     }
     
+    /// Encrypt sensitive preferences
+    func encrypt() throws {
+        guard !isEncrypted else { return }
+        try DataEncryptionService.shared.encryptUserPreferences(self)
+    }
+    
+    /// Decrypt preferences if encrypted
+    func decrypt() throws {
+        guard isEncrypted else { return }
+        try DataEncryptionService.shared.decryptUserPreferences(self)
+    }
+    
+    /// Get decrypted API keys
+    var decryptedAPIKeys: String? {
+        if isEncrypted {
+            do {
+                try decrypt()
+                return apiKeys
+            } catch {
+                return nil
+            }
+        }
+        return apiKeys
+    }
+    
+    /// Get decrypted custom prompts
+    var decryptedCustomPrompts: String? {
+        if isEncrypted {
+            do {
+                try decrypt()
+                return customPrompts
+            } catch {
+                return nil
+            }
+        }
+        return customPrompts
+    }
+    
+    /// Check if preferences should be encrypted based on content
+    var shouldBeEncrypted: Bool {
+        return apiKeys != nil || customPrompts != nil || encryptLocalData
+    }
+    
     /// Reset to default values
     func resetToDefaults() {
         preferredModel = "gpt-4-turbo-preview"

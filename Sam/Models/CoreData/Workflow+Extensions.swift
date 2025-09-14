@@ -170,6 +170,60 @@ extension Workflow {
         executionCount += 1
     }
     
+    /// Encrypt workflow data
+    func encrypt() throws {
+        guard !isEncrypted else { return }
+        try DataEncryptionService.shared.encryptWorkflow(self)
+    }
+    
+    /// Get decrypted steps data
+    var decryptedStepsData: Data? {
+        if isEncrypted {
+            do {
+                return try DataEncryptionService.shared.decryptWorkflow(self)
+            } catch {
+                return nil
+            }
+        }
+        return stepsData
+    }
+    
+    /// Get decrypted steps
+    var decryptedSteps: [WorkflowStep] {
+        guard let data = decryptedStepsData,
+              let steps = try? JSONDecoder().decode([WorkflowStep].self, from: data) else {
+            return []
+        }
+        return steps
+    }
+    
+    /// Check if workflow contains sensitive data
+    var containsSensitiveData: Bool {
+        let privacyManager = PrivacyManager()
+        
+        // Check workflow name and description
+        let nameData = privacyManager.classifyDataSensitivity(name)
+        let descData = privacyManager.classifyDataSensitivity(descriptionText)
+        
+        if nameData != .public || descData != .public {
+            return true
+        }
+        
+        // Check steps for sensitive parameters
+        for step in steps {
+            for (_, value) in step.parameters {
+                if let stringValue = value as? String {
+                    let sensitivity = privacyManager.classifyDataSensitivity(stringValue)
+                    if sensitivity != .public {
+                        return true
+                    }
+                }
+            }
+        }
+        
+        return false
+    }
+    
     /// Validation before saving
     override public func validateForInsert() throws {
         try super.validateForInsert()

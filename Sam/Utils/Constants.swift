@@ -152,8 +152,13 @@ struct UserDefaultsKeys {
 // MARK: - Keychain Keys
 struct KeychainKeys {
     static let openAIAPIKey = "openai_api_key"
+    static let anthropicAPIKey = "anthropic_api_key"
+    static let googleAPIKey = "google_api_key"
+    static let azureAPIKey = "azure_api_key"
     static let encryptionKey = "local_encryption_key"
+    static let masterEncryptionKey = "master_encryption_key"
     static let userIdentifier = "user_identifier"
+    static let biometricAuthKey = "biometric_auth_key"
 }
 
 // MARK: - Error Codes

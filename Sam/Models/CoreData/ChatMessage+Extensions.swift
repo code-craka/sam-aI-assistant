@@ -52,7 +52,33 @@ extension ChatMessage {
     
     /// Message preview (first 100 characters)
     var preview: String {
-        return String(content.prefix(100))
+        let displayContent = isEncrypted ? "[Encrypted Message]" : content
+        return String(displayContent.prefix(100))
+    }
+    
+    /// Get decrypted content if encrypted
+    var decryptedContent: String {
+        if isEncrypted {
+            do {
+                return try DataEncryptionService.shared.decryptChatMessage(self)
+            } catch {
+                return "[Decryption Failed]"
+            }
+        }
+        return content
+    }
+    
+    /// Encrypt this message
+    func encrypt() throws {
+        guard !isEncrypted else { return }
+        try DataEncryptionService.shared.encryptChatMessage(self)
+    }
+    
+    /// Check if message contains sensitive data
+    var containsSensitiveData: Bool {
+        let privacyManager = PrivacyManager()
+        let sensitivity = privacyManager.classifyDataSensitivity(content)
+        return sensitivity != .public
     }
     
     /// Validation before saving
