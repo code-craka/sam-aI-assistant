@@ -53,6 +53,8 @@ Sam/
 3. **Build and Run**:
    - Press `Cmd+R` to build and run
    - Or use Product → Run from the menu
+   
+   **Expected Result**: ❌ Currently has compilation errors that need fixing
 
 ### Method 2: Using Swift Package Manager (Command Line)
 
@@ -65,11 +67,13 @@ Sam/
    ```bash
    swift build
    ```
+   **Expected Result**: ❌ Currently fails with compilation errors
 
 3. **Run the executable**:
    ```bash
    swift run Sam
    ```
+   **Expected Result**: ❌ Cannot run until compilation errors are fixed
 
 ### Method 3: Build Release Version
 
@@ -133,19 +137,37 @@ The app will prompt for these permissions on first use.
 
 ## Troubleshooting
 
+### Build Status
+⚠️ **Significant Progress Made - Still Some Issues Remaining**
+
+**✅ FIXED:**
+- SmartSuggestions.swift: Fixed array conversion issues
+- ConversationTopic enum: Added String raw values  
+- Actor isolation: Fixed with proper Task wrapping
+- Test files: Moved to correct Tests/ directory structure
+- Some SwiftUI macOS compatibility issues
+- WorkflowDefinition: Added Hashable conformance
+
+**❌ REMAINING ISSUES:**
+- Complex SwiftUI binding expressions in settings views
+- Duplicate view definitions (PrivacySettingsView, FeatureRow, etc.)
+- MemoryPressure type ambiguity between TaskModels and MemoryManager
+- UserPreferences type resolution issues
+- navigationBarTitleDisplayMode still present in some files
+- WorkflowTemplate needs Hashable conformance
+- Core Data preview configuration issues
+
+**Current Status**: The project has ~50+ compilation errors remaining, primarily in UI views.
+
 ### Common Build Issues
 
 #### 1. "No such module 'XCTest'" Error
-**Solution**: Test files should be in the `Tests/` directory, not `Services/`
-```bash
-# Move test files to correct location
-find Sam/Services -name "*Test*.swift" -exec mv {} Sam/Tests/UnitTests/Services/ \;
-```
+**Solution**: ✅ **FIXED** - Test files moved to `Tests/` directory
 
 #### 2. Actor Isolation Warnings
-**Solution**: These are warnings in Swift 6 mode and don't prevent building
+**Solution**: ✅ **FIXED** - Timer callbacks now properly wrapped
 ```bash
-# Build with Swift 5 compatibility
+# If you still see warnings, build with Swift 5 compatibility
 swift build -Xswiftc -swift-version -Xswiftc 5
 ```
 
@@ -159,6 +181,9 @@ swift build -Xswiftc -swift-version -Xswiftc 5
 - Select your development team in project settings
 - Enable "Automatically manage signing"
 - Or create manual provisioning profile
+
+#### 5. SwiftUI macOS Compatibility
+**Solution**: ✅ **FIXED** - Removed iOS-only modifiers like PageTabViewStyle
 
 ### Performance Issues
 
