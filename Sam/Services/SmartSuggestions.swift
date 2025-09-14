@@ -198,7 +198,9 @@ class SmartSuggestionsService: ObservableObject {
 
         // Clear cache periodically
         Timer.scheduledTimer(withTimeInterval: cacheExpiryTime, repeats: true) { [weak self] _ in
-            self?.clearExpiredCache()
+            Task { @MainActor in
+                self?.clearExpiredCache()
+            }
         }
     }
 
@@ -365,7 +367,7 @@ class SmartSuggestionsService: ObservableObject {
             let inputWords = lowercasedInput.split(separator: " ")
 
             let matchScore = calculateMatchScore(
-                templateWords: Array(templateWords), inputWords: Array(inputWords))
+                templateWords: templateWords.map(String.init), inputWords: inputWords.map(String.init))
 
             if matchScore > 0.3 {
                 suggestions.append(
@@ -528,7 +530,7 @@ class SmartSuggestionsService: ObservableObject {
     private func getDefaultContext() -> ConversationContextForAI {
         return ConversationContextForAI(
             recentMessages: [],
-            currentTopic: nil,
+            currentTopic: nil as ConversationTopic?,
             activeEntities: [],
             taskContext: TaskContext(),
             systemContext: contextManager.systemContext,

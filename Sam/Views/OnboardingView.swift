@@ -19,7 +19,7 @@ struct OnboardingView: View {
                             .tag(step)
                     }
                 }
-                .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
+                .tabViewStyle(.automatic)
                 .animation(.easeInOut, value: onboardingManager.currentStep)
                 
                 // Navigation buttons
@@ -402,7 +402,7 @@ struct ExampleCommandRow: View {
                 
                 Text(command)
                     .font(.body)
-                    .fontFamily(.monospaced)
+                    .font(.system(.body, design: .monospaced))
             }
             
             Spacer()

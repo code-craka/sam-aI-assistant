@@ -82,7 +82,7 @@ struct WorkflowCondition: Codable {
 
 // MARK: - Workflow Definition
 
-struct WorkflowDefinition: Identifiable, Codable {
+struct WorkflowDefinition: Identifiable, Codable, Hashable {
     let id: UUID
     let name: String
     let description: String

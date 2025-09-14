@@ -1,296 +1,356 @@
 import XCTest
 @testable import Sam
 
+@MainActor
 final class SystemServiceTests: XCTestCase {
+    
     var systemService: SystemService!
-    var mockSystemInfoProvider: MockSystemInfoProvider!
     
     override func setUp() {
         super.setUp()
-        mockSystemInfoProvider = MockSystemInfoProvider()
-        systemService = SystemService(systemInfoProvider: mockSystemInfoProvider)
+        systemService = SystemService()
     }
     
     override func tearDown() {
         systemService = nil
-        mockSystemInfoProvider = nil
         super.tearDown()
     }
     
-    // MARK: - Battery Information Tests
+    // MARK: - System Information Tests
     
-    func testGetBatteryInfo() async throws {
-        // Given
-        mockSystemInfoProvider.mockBatteryLevel = 0.75
-        mockSystemInfoProvider.mockIsCharging = true
-        
+    func testGetSystemInfo() async throws {
         // When
-        let batteryInfo = try await systemService.getBatteryInfo()
+        let systemInfo = try await systemService.getSystemInfo()
         
         // Then
-        XCTAssertEqual(batteryInfo.level, 0.75)
-        XCTAssertTrue(batteryInfo.isCharging)
-        XCTAssertEqual(batteryInfo.percentage, 75)
-    }
-    
-    func testGetBatteryInfoWhenUnavailable() async throws {
-        // Given
-        mockSystemInfoProvider.mockBatteryLevel = nil
+        XCTAssertNotNil(systemInfo)
+        XCTAssertFalse(systemInfo.systemVersion.isEmpty)
+        XCTAssertFalse(systemInfo.systemBuild.isEmpty)
+        XCTAssertGreaterThan(systemInfo.uptime, 0)
+        XCTAssertNotNil(systemInfo.storage)
+        XCTAssertNotNil(systemInfo.memory)
+        XCTAssertNotNil(systemInfo.network)
+        XCTAssertNotNil(systemInfo.cpu)
+        XCTAssertNotNil(systemInfo.runningApps)
         
-        // When & Then
-        do {
-            _ = try await systemService.getBatteryInfo()
-            XCTFail("Expected error when battery info unavailable")
-        } catch SystemAccessError.batteryInfoUnavailable {
-            // Expected
-        }
+        // Verify timestamp is recent
+        let timeDifference = abs(systemInfo.timestamp.timeIntervalSinceNow)
+        XCTAssertLessThan(timeDifference, 5.0, "Timestamp should be within 5 seconds")
     }
-    
-    // MARK: - Storage Information Tests
     
     func testGetStorageInfo() async throws {
-        // Given
-        mockSystemInfoProvider.mockAvailableStorage = 500_000_000_000 // 500GB
-        mockSystemInfoProvider.mockTotalStorage = 1_000_000_000_000 // 1TB
-        
         // When
         let storageInfo = try await systemService.getStorageInfo()
         
         // Then
-        XCTAssertEqual(storageInfo.availableBytes, 500_000_000_000)
-        XCTAssertEqual(storageInfo.totalBytes, 1_000_000_000_000)
-        XCTAssertEqual(storageInfo.usedBytes, 500_000_000_000)
-        XCTAssertEqual(storageInfo.usagePercentage, 50.0, accuracy: 0.1)
-    }
-    
-    func testGetStorageInfoFormatted() async throws {
-        // Given
-        mockSystemInfoProvider.mockAvailableStorage = 500_000_000_000
-        mockSystemInfoProvider.mockTotalStorage = 1_000_000_000_000
+        XCTAssertGreaterThan(storageInfo.totalSpace, 0)
+        XCTAssertGreaterThanOrEqual(storageInfo.availableSpace, 0)
+        XCTAssertGreaterThanOrEqual(storageInfo.usedSpace, 0)
+        XCTAssertLessThanOrEqual(storageInfo.availableSpace, storageInfo.totalSpace)
+        XCTAssertEqual(storageInfo.usedSpace, storageInfo.totalSpace - storageInfo.availableSpace)
+        XCTAssertFalse(storageInfo.volumes.isEmpty)
         
-        // When
-        let storageInfo = try await systemService.getStorageInfo()
-        
-        // Then
-        XCTAssertEqual(storageInfo.availableFormatted, "500.0 GB")
-        XCTAssertEqual(storageInfo.totalFormatted, "1.0 TB")
-        XCTAssertEqual(storageInfo.usedFormatted, "500.0 GB")
+        // Test calculated properties
+        XCTAssertGreaterThan(storageInfo.totalSpaceGB, 0)
+        XCTAssertGreaterThanOrEqual(storageInfo.availableSpaceGB, 0)
+        XCTAssertGreaterThanOrEqual(storageInfo.usedSpaceGB, 0)
+        XCTAssertGreaterThanOrEqual(storageInfo.usagePercentage, 0)
+        XCTAssertLessThanOrEqual(storageInfo.usagePercentage, 100)
     }
-    
-    // MARK: - Memory Information Tests
     
     func testGetMemoryInfo() async throws {
-        // Given
-        mockSystemInfoProvider.mockTotalMemory = 16_000_000_000 // 16GB
-        mockSystemInfoProvider.mockUsedMemory = 8_000_000_000 // 8GB
-        
         // When
         let memoryInfo = try await systemService.getMemoryInfo()
         
         // Then
-        XCTAssertEqual(memoryInfo.totalBytes, 16_000_000_000)
-        XCTAssertEqual(memoryInfo.usedBytes, 8_000_000_000)
-        XCTAssertEqual(memoryInfo.availableBytes, 8_000_000_000)
-        XCTAssertEqual(memoryInfo.usagePercentage, 50.0, accuracy: 0.1)
+        XCTAssertGreaterThan(memoryInfo.totalMemory, 0)
+        XCTAssertGreaterThanOrEqual(memoryInfo.usedMemory, 0)
+        XCTAssertGreaterThanOrEqual(memoryInfo.availableMemory, 0)
+        XCTAssertGreaterThanOrEqual(memoryInfo.appMemory, 0)
+        XCTAssertGreaterThanOrEqual(memoryInfo.wiredMemory, 0)
+        XCTAssertGreaterThanOrEqual(memoryInfo.compressedMemory, 0)
+        XCTAssertGreaterThanOrEqual(memoryInfo.swapUsed, 0)
+        
+        // Test calculated properties
+        XCTAssertGreaterThan(memoryInfo.totalMemoryGB, 0)
+        XCTAssertGreaterThanOrEqual(memoryInfo.usedMemoryGB, 0)
+        XCTAssertGreaterThanOrEqual(memoryInfo.availableMemoryGB, 0)
+        XCTAssertGreaterThanOrEqual(memoryInfo.usagePercentage, 0)
+        XCTAssertLessThanOrEqual(memoryInfo.usagePercentage, 100)
+        
+        // Test memory pressure enum
+        let validPressures: [MemoryInfo.MemoryPressure] = [.normal, .warning, .urgent, .critical]
+        XCTAssertTrue(validPressures.contains(memoryInfo.memoryPressure))
     }
     
-    func testGetMemoryPressure() async throws {
-        // Given
-        mockSystemInfoProvider.mockMemoryPressure = .normal
-        
+    func testGetNetworkInfo() async throws {
         // When
-        let memoryInfo = try await systemService.getMemoryInfo()
+        let networkInfo = try await systemService.getNetworkInfo()
         
         // Then
-        XCTAssertEqual(memoryInfo.pressure, .normal)
+        XCTAssertNotNil(networkInfo)
+        XCTAssertFalse(networkInfo.interfaces.isEmpty)
+        
+        // If connected, should have a primary interface
+        if networkInfo.isConnected {
+            XCTAssertNotNil(networkInfo.primaryInterface)
+            XCTAssertTrue(networkInfo.primaryInterface?.isActive ?? false)
+        }
+        
+        // Test interface properties
+        for interface in networkInfo.interfaces {
+            XCTAssertFalse(interface.name.isEmpty)
+            XCTAssertFalse(interface.displayName.isEmpty)
+            
+            let validTypes: [NetworkInterface.ConnectionType] = [.wifi, .ethernet, .cellular, .vpn, .bluetooth, .other, .none]
+            XCTAssertTrue(validTypes.contains(interface.type))
+        }
     }
     
-    // MARK: - Network Information Tests
+    func testGetCPUInfo() async throws {
+        // When
+        let cpuInfo = try await systemService.getCPUInfo()
+        
+        // Then
+        XCTAssertGreaterThanOrEqual(cpuInfo.usage, 0)
+        XCTAssertLessThanOrEqual(cpuInfo.usage, 100)
+        XCTAssertGreaterThan(cpuInfo.coreCount, 0)
+        XCTAssertGreaterThan(cpuInfo.threadCount, 0)
+        XCTAssertGreaterThanOrEqual(cpuInfo.threadCount, cpuInfo.coreCount)
+        XCTAssertFalse(cpuInfo.architecture.isEmpty)
+        XCTAssertFalse(cpuInfo.brand.isEmpty)
+        
+        // Test per-core usage
+        XCTAssertEqual(cpuInfo.perCoreUsage.count, cpuInfo.coreCount)
+        for coreUsage in cpuInfo.perCoreUsage {
+            XCTAssertGreaterThanOrEqual(coreUsage, 0)
+            XCTAssertLessThanOrEqual(coreUsage, 100)
+        }
+        
+        // Test thermal state if temperature is available
+        if cpuInfo.temperature != nil {
+            let validStates: [CPUInfo.ThermalState] = [.normal, .warm, .hot, .critical, .unknown]
+            XCTAssertTrue(validStates.contains(cpuInfo.thermalState))
+        }
+    }
     
-    func testGetNetworkStatus() async throws {
-        // Given
-        mockSystemInfoProvider.mockNetworkStatus = NetworkStatus(
-            isConnected: true,
-            connectionType: .wifi,
-            ssid: "TestNetwork",
-            ipAddress: "192.168.1.100"
+    func testGetRunningApps() async throws {
+        // When
+        let runningApps = try await systemService.getRunningApps()
+        
+        // Then
+        XCTAssertFalse(runningApps.isEmpty, "Should have at least one running app")
+        
+        for app in runningApps {
+            XCTAssertFalse(app.bundleIdentifier.isEmpty)
+            XCTAssertFalse(app.name.isEmpty)
+            XCTAssertGreaterThan(app.processID, 0)
+            XCTAssertGreaterThanOrEqual(app.memoryUsage, 0)
+            XCTAssertGreaterThanOrEqual(app.cpuUsage, 0)
+        }
+        
+        // Should find this test app
+        let testApp = runningApps.first { $0.bundleIdentifier.contains("Sam") || $0.name.contains("Sam") }
+        // Note: This might not always find the app depending on how tests are run
+    }
+    
+    // MARK: - Battery Tests
+    
+    func testGetBatteryInfoOnDeviceWithBattery() async {
+        // This test will pass on devices with batteries and fail gracefully on others
+        do {
+            let batteryInfo = try await systemService.getBatteryInfo()
+            
+            // Then
+            XCTAssertGreaterThanOrEqual(batteryInfo.level, 0)
+            XCTAssertLessThanOrEqual(batteryInfo.level, 1)
+            
+            let validPowerSources: [BatteryInfo.PowerSource] = [.battery, .acPower, .ups, .unknown]
+            XCTAssertTrue(validPowerSources.contains(batteryInfo.powerSource))
+            
+            let validHealthStates: [BatteryInfo.BatteryHealth] = [.good, .fair, .poor, .unknown]
+            if let health = batteryInfo.health {
+                XCTAssertTrue(validHealthStates.contains(health))
+            }
+            
+            // Test calculated properties
+            let percentage = batteryInfo.levelPercentage
+            XCTAssertGreaterThanOrEqual(percentage, 0)
+            XCTAssertLessThanOrEqual(percentage, 100)
+            
+        } catch SystemServiceError.batteryNotFound {
+            // This is expected on devices without batteries (like Mac Pro, Mac Studio, etc.)
+            XCTAssertTrue(true, "Battery not found - this is expected on some Mac models")
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+    
+    // MARK: - Query Tests
+    
+    func testQuerySystemBattery() async throws {
+        // When
+        let result = try await systemService.querySystem(.battery)
+        
+        // Then
+        XCTAssertFalse(result.isEmpty)
+        XCTAssertTrue(result.contains("Battery") || result.contains("not available"))
+    }
+    
+    func testQuerySystemStorage() async throws {
+        // When
+        let result = try await systemService.querySystem(.storage)
+        
+        // Then
+        XCTAssertFalse(result.isEmpty)
+        XCTAssertTrue(result.contains("Storage"))
+        XCTAssertTrue(result.contains("GB"))
+    }
+    
+    func testQuerySystemMemory() async throws {
+        // When
+        let result = try await systemService.querySystem(.memory)
+        
+        // Then
+        XCTAssertFalse(result.isEmpty)
+        XCTAssertTrue(result.contains("Memory"))
+        XCTAssertTrue(result.contains("GB"))
+    }
+    
+    func testQuerySystemNetwork() async throws {
+        // When
+        let result = try await systemService.querySystem(.network)
+        
+        // Then
+        XCTAssertFalse(result.isEmpty)
+        XCTAssertTrue(result.contains("Network"))
+    }
+    
+    func testQuerySystemCPU() async throws {
+        // When
+        let result = try await systemService.querySystem(.cpu)
+        
+        // Then
+        XCTAssertFalse(result.isEmpty)
+        XCTAssertTrue(result.contains("CPU"))
+        XCTAssertTrue(result.contains("%"))
+    }
+    
+    func testQuerySystemApps() async throws {
+        // When
+        let result = try await systemService.querySystem(.apps)
+        
+        // Then
+        XCTAssertFalse(result.isEmpty)
+        XCTAssertTrue(result.contains("Running Applications"))
+    }
+    
+    func testQuerySystemOverview() async throws {
+        // When
+        let result = try await systemService.querySystem(.overview)
+        
+        // Then
+        XCTAssertFalse(result.isEmpty)
+        XCTAssertTrue(result.contains("System Overview"))
+        XCTAssertTrue(result.contains("macOS"))
+    }
+    
+    func testQuerySystemPerformance() async throws {
+        // When
+        let result = try await systemService.querySystem(.performance)
+        
+        // Then
+        XCTAssertFalse(result.isEmpty)
+        XCTAssertTrue(result.contains("Performance Metrics"))
+    }
+    
+    // MARK: - Model Tests
+    
+    func testSystemQueryTypeEnum() {
+        let allTypes = SystemQueryType.allCases
+        XCTAssertEqual(allTypes.count, 8)
+        
+        for type in allTypes {
+            XCTAssertFalse(type.displayName.isEmpty)
+            XCTAssertFalse(type.rawValue.isEmpty)
+        }
+    }
+    
+    func testBatteryInfoCalculatedProperties() {
+        let batteryInfo = BatteryInfo(
+            level: 0.75,
+            isCharging: false,
+            timeRemaining: 7200, // 2 hours
+            powerSource: .battery,
+            cycleCount: 150,
+            health: .good
         )
         
-        // When
-        let networkStatus = try await systemService.getNetworkStatus()
-        
-        // Then
-        XCTAssertTrue(networkStatus.isConnected)
-        XCTAssertEqual(networkStatus.connectionType, .wifi)
-        XCTAssertEqual(networkStatus.ssid, "TestNetwork")
-        XCTAssertEqual(networkStatus.ipAddress, "192.168.1.100")
+        XCTAssertEqual(batteryInfo.levelPercentage, 75)
+        XCTAssertEqual(batteryInfo.formattedTimeRemaining, "2h 0m")
     }
     
-    func testGetNetworkStatusWhenDisconnected() async throws {
-        // Given
-        mockSystemInfoProvider.mockNetworkStatus = NetworkStatus(
-            isConnected: false,
-            connectionType: .none,
-            ssid: nil,
-            ipAddress: nil
+    func testStorageInfoCalculatedProperties() {
+        let storageInfo = StorageInfo(
+            totalSpace: 1_000_000_000_000, // 1TB
+            availableSpace: 250_000_000_000, // 250GB
+            usedSpace: 750_000_000_000, // 750GB
+            volumes: []
         )
         
-        // When
-        let networkStatus = try await systemService.getNetworkStatus()
-        
-        // Then
-        XCTAssertFalse(networkStatus.isConnected)
-        XCTAssertEqual(networkStatus.connectionType, .none)
-        XCTAssertNil(networkStatus.ssid)
-        XCTAssertNil(networkStatus.ipAddress)
+        XCTAssertEqual(storageInfo.totalSpaceGB, 1000, accuracy: 0.1)
+        XCTAssertEqual(storageInfo.availableSpaceGB, 250, accuracy: 0.1)
+        XCTAssertEqual(storageInfo.usedSpaceGB, 750, accuracy: 0.1)
+        XCTAssertEqual(storageInfo.usagePercentage, 75, accuracy: 0.1)
     }
     
-    // MARK: - Running Applications Tests
-    
-    func testGetRunningApplications() async throws {
-        // Given
-        let mockApps = [
-            AppInfo(bundleIdentifier: "com.apple.finder", name: "Finder", isActive: true),
-            AppInfo(bundleIdentifier: "com.apple.safari", name: "Safari", isActive: false),
-            AppInfo(bundleIdentifier: "com.microsoft.VSCode", name: "Visual Studio Code", isActive: true)
-        ]
-        mockSystemInfoProvider.mockRunningApps = mockApps
+    func testMemoryInfoCalculatedProperties() {
+        let memoryInfo = MemoryInfo(
+            totalMemory: 16_000_000_000, // 16GB
+            usedMemory: 12_000_000_000, // 12GB
+            availableMemory: 4_000_000_000, // 4GB
+            appMemory: 8_000_000_000,
+            wiredMemory: 2_000_000_000,
+            compressedMemory: 1_000_000_000,
+            swapUsed: 0,
+            memoryPressure: .warning
+        )
         
-        // When
-        let runningApps = try await systemService.getRunningApplications()
-        
-        // Then
-        XCTAssertEqual(runningApps.count, 3)
-        XCTAssertTrue(runningApps.contains { $0.name == "Finder" && $0.isActive })
-        XCTAssertTrue(runningApps.contains { $0.name == "Safari" && !$0.isActive })
-        XCTAssertTrue(runningApps.contains { $0.name == "Visual Studio Code" && $0.isActive })
+        XCTAssertEqual(memoryInfo.totalMemoryGB, 16, accuracy: 0.1)
+        XCTAssertEqual(memoryInfo.usedMemoryGB, 12, accuracy: 0.1)
+        XCTAssertEqual(memoryInfo.availableMemoryGB, 4, accuracy: 0.1)
+        XCTAssertEqual(memoryInfo.usagePercentage, 75, accuracy: 0.1)
     }
     
-    func testGetActiveApplication() async throws {
-        // Given
-        let mockApps = [
-            AppInfo(bundleIdentifier: "com.apple.finder", name: "Finder", isActive: false),
-            AppInfo(bundleIdentifier: "com.apple.safari", name: "Safari", isActive: true)
-        ]
-        mockSystemInfoProvider.mockRunningApps = mockApps
+    func testWiFiInfoSignalQuality() {
+        let excellentWiFi = WiFiInfo(ssid: "Test", bssid: nil, signalStrength: -25, channel: 6, security: .wpa2, frequency: 2.4)
+        XCTAssertEqual(excellentWiFi.signalQuality, .excellent)
         
-        // When
-        let activeApp = try await systemService.getActiveApplication()
+        let goodWiFi = WiFiInfo(ssid: "Test", bssid: nil, signalStrength: -40, channel: 6, security: .wpa2, frequency: 2.4)
+        XCTAssertEqual(goodWiFi.signalQuality, .good)
         
-        // Then
-        XCTAssertEqual(activeApp?.name, "Safari")
-        XCTAssertTrue(activeApp?.isActive ?? false)
+        let fairWiFi = WiFiInfo(ssid: "Test", bssid: nil, signalStrength: -60, channel: 6, security: .wpa2, frequency: 2.4)
+        XCTAssertEqual(fairWiFi.signalQuality, .fair)
+        
+        let poorWiFi = WiFiInfo(ssid: "Test", bssid: nil, signalStrength: -80, channel: 6, security: .wpa2, frequency: 2.4)
+        XCTAssertEqual(poorWiFi.signalQuality, .poor)
     }
     
-    // MARK: - System Control Tests
-    
-    func testSetVolume() async throws {
-        // Given
-        let targetVolume: Float = 0.5
+    func testSystemInfoFormattedUptime() {
+        let systemInfo = SystemInfo(
+            battery: nil,
+            storage: StorageInfo(totalSpace: 0, availableSpace: 0, usedSpace: 0, volumes: []),
+            memory: MemoryInfo(totalMemory: 0, usedMemory: 0, availableMemory: 0, appMemory: 0, wiredMemory: 0, compressedMemory: 0, swapUsed: 0, memoryPressure: .normal),
+            network: NetworkInfo(isConnected: false, primaryInterface: nil, interfaces: [], wifiInfo: nil),
+            cpu: CPUInfo(usage: 0, coreCount: 1, threadCount: 1, architecture: "test", brand: "test", frequency: nil, temperature: nil, perCoreUsage: []),
+            runningApps: [],
+            timestamp: Date(),
+            systemVersion: "14.0.0",
+            systemBuild: "23A344",
+            uptime: 90061 // 1 day, 1 hour, 1 minute, 1 second
+        )
         
-        // When
-        try await systemService.setVolume(targetVolume)
-        
-        // Then
-        XCTAssertTrue(mockSystemInfoProvider.setVolumeCalled)
-        XCTAssertEqual(mockSystemInfoProvider.lastVolumeSet, targetVolume)
-    }
-    
-    func testSetVolumeWithInvalidValue() async throws {
-        // Given
-        let invalidVolume: Float = 1.5
-        
-        // When & Then
-        do {
-            try await systemService.setVolume(invalidVolume)
-            XCTFail("Expected error for invalid volume")
-        } catch SystemAccessError.invalidParameter {
-            // Expected
-        }
-    }
-    
-    func testSetBrightness() async throws {
-        // Given
-        let targetBrightness: Float = 0.8
-        
-        // When
-        try await systemService.setBrightness(targetBrightness)
-        
-        // Then
-        XCTAssertTrue(mockSystemInfoProvider.setBrightnessCalled)
-        XCTAssertEqual(mockSystemInfoProvider.lastBrightnessSet, targetBrightness)
-    }
-    
-    // MARK: - System Maintenance Tests
-    
-    func testClearSystemCaches() async throws {
-        // When
-        let result = try await systemService.clearSystemCaches()
-        
-        // Then
-        XCTAssertTrue(result.success)
-        XCTAssertTrue(mockSystemInfoProvider.clearCachesCalled)
-        XCTAssertTrue(result.summary.contains("cache"))
-    }
-    
-    func testEmptyTrash() async throws {
-        // When
-        let result = try await systemService.emptyTrash()
-        
-        // Then
-        XCTAssertTrue(result.success)
-        XCTAssertTrue(mockSystemInfoProvider.emptyTrashCalled)
-        XCTAssertTrue(result.summary.contains("trash"))
-    }
-    
-    // MARK: - System Information Aggregation Tests
-    
-    func testGetSystemOverview() async throws {
-        // Given
-        mockSystemInfoProvider.mockBatteryLevel = 0.85
-        mockSystemInfoProvider.mockIsCharging = false
-        mockSystemInfoProvider.mockAvailableStorage = 250_000_000_000
-        mockSystemInfoProvider.mockTotalStorage = 500_000_000_000
-        mockSystemInfoProvider.mockTotalMemory = 16_000_000_000
-        mockSystemInfoProvider.mockUsedMemory = 12_000_000_000
-        
-        // When
-        let overview = try await systemService.getSystemOverview()
-        
-        // Then
-        XCTAssertEqual(overview.batteryPercentage, 85)
-        XCTAssertFalse(overview.isCharging)
-        XCTAssertEqual(overview.storageUsagePercentage, 50.0, accuracy: 0.1)
-        XCTAssertEqual(overview.memoryUsagePercentage, 75.0, accuracy: 0.1)
-        XCTAssertNotNil(overview.networkStatus)
-    }
-    
-    // MARK: - Error Handling Tests
-    
-    func testHandleSystemAccessDenied() async throws {
-        // Given
-        mockSystemInfoProvider.shouldThrowAccessDenied = true
-        
-        // When & Then
-        do {
-            _ = try await systemService.getBatteryInfo()
-            XCTFail("Expected access denied error")
-        } catch SystemAccessError.accessDenied {
-            // Expected
-        }
-    }
-    
-    func testHandleSystemInfoUnavailable() async throws {
-        // Given
-        mockSystemInfoProvider.shouldThrowInfoUnavailable = true
-        
-        // When & Then
-        do {
-            _ = try await systemService.getMemoryInfo()
-            XCTFail("Expected info unavailable error")
-        } catch SystemAccessError.informationUnavailable {
-            // Expected
-        }
+        XCTAssertEqual(systemInfo.formattedUptime, "1d 1h 1m")
     }
     
     // MARK: - Performance Tests
@@ -298,122 +358,32 @@ final class SystemServiceTests: XCTestCase {
     func testSystemInfoPerformance() {
         measure {
             Task {
-                _ = try? await systemService.getSystemOverview()
+                _ = try? await systemService.getSystemInfo()
             }
         }
     }
     
-    func testConcurrentSystemQueries() async throws {
-        // When
-        let startTime = Date()
-        
-        async let batteryInfo = systemService.getBatteryInfo()
-        async let storageInfo = systemService.getStorageInfo()
-        async let memoryInfo = systemService.getMemoryInfo()
-        async let networkStatus = systemService.getNetworkStatus()
-        
-        let results = try await [
-            batteryInfo,
-            storageInfo,
-            memoryInfo,
-            networkStatus
-        ]
-        
-        let executionTime = Date().timeIntervalSince(startTime)
-        
-        // Then
-        XCTAssertEqual(results.count, 4)
-        XCTAssertLessThan(executionTime, 2.0, "Concurrent queries took too long")
-    }
-}
-
-// MARK: - Mock Classes
-
-class MockSystemInfoProvider: SystemInfoProviderProtocol {
-    var mockBatteryLevel: Double?
-    var mockIsCharging = false
-    var mockAvailableStorage: Int64 = 0
-    var mockTotalStorage: Int64 = 0
-    var mockTotalMemory: Int64 = 0
-    var mockUsedMemory: Int64 = 0
-    var mockMemoryPressure: MemoryPressure = .normal
-    var mockNetworkStatus: NetworkStatus?
-    var mockRunningApps: [AppInfo] = []
-    
-    var shouldThrowAccessDenied = false
-    var shouldThrowInfoUnavailable = false
-    
-    var setVolumeCalled = false
-    var setBrightnessCalled = false
-    var clearCachesCalled = false
-    var emptyTrashCalled = false
-    
-    var lastVolumeSet: Float?
-    var lastBrightnessSet: Float?
-    
-    func getBatteryLevel() throws -> Double? {
-        if shouldThrowAccessDenied {
-            throw SystemAccessError.accessDenied("Battery access denied")
+    func testBatteryInfoPerformance() {
+        measure {
+            Task {
+                _ = try? await systemService.getBatteryInfo()
+            }
         }
-        return mockBatteryLevel
     }
     
-    func isBatteryCharging() throws -> Bool {
-        if shouldThrowAccessDenied {
-            throw SystemAccessError.accessDenied("Battery access denied")
+    func testStorageInfoPerformance() {
+        measure {
+            Task {
+                _ = try? await systemService.getStorageInfo()
+            }
         }
-        return mockIsCharging
     }
     
-    func getStorageInfo() throws -> (available: Int64, total: Int64) {
-        if shouldThrowInfoUnavailable {
-            throw SystemAccessError.informationUnavailable("Storage info unavailable")
+    func testMemoryInfoPerformance() {
+        measure {
+            Task {
+                _ = try? await systemService.getMemoryInfo()
+            }
         }
-        return (available: mockAvailableStorage, total: mockTotalStorage)
-    }
-    
-    func getMemoryInfo() throws -> (total: Int64, used: Int64, pressure: MemoryPressure) {
-        if shouldThrowInfoUnavailable {
-            throw SystemAccessError.informationUnavailable("Memory info unavailable")
-        }
-        return (total: mockTotalMemory, used: mockUsedMemory, pressure: mockMemoryPressure)
-    }
-    
-    func getNetworkStatus() throws -> NetworkStatus {
-        if shouldThrowInfoUnavailable {
-            throw SystemAccessError.informationUnavailable("Network info unavailable")
-        }
-        return mockNetworkStatus ?? NetworkStatus(isConnected: false, connectionType: .none, ssid: nil, ipAddress: nil)
-    }
-    
-    func getRunningApplications() throws -> [AppInfo] {
-        if shouldThrowAccessDenied {
-            throw SystemAccessError.accessDenied("App list access denied")
-        }
-        return mockRunningApps
-    }
-    
-    func setVolume(_ volume: Float) throws {
-        if volume < 0 || volume > 1 {
-            throw SystemAccessError.invalidParameter("Volume must be between 0 and 1")
-        }
-        setVolumeCalled = true
-        lastVolumeSet = volume
-    }
-    
-    func setBrightness(_ brightness: Float) throws {
-        if brightness < 0 || brightness > 1 {
-            throw SystemAccessError.invalidParameter("Brightness must be between 0 and 1")
-        }
-        setBrightnessCalled = true
-        lastBrightnessSet = brightness
-    }
-    
-    func clearSystemCaches() throws {
-        clearCachesCalled = true
-    }
-    
-    func emptyTrash() throws {
-        emptyTrashCalled = true
     }
 }

@@ -532,13 +532,13 @@ struct TaskContext {
     }
 }
 
-enum ConversationTopic {
-    case fileManagement
-    case systemMaintenance
-    case productivity
-    case development
-    case webBrowsing
-    case communication
+enum ConversationTopic: String {
+    case fileManagement = "file_management"
+    case systemMaintenance = "system_maintenance"
+    case productivity = "productivity"
+    case development = "development"
+    case webBrowsing = "web_browsing"
+    case communication = "communication"
 }
 
 struct ContextualSuggestion {

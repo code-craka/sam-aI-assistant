@@ -3,8 +3,14 @@ import SwiftUI
 import Combine
 import AppKit
 
+// Use UserPreferences from UserModels
+typealias UserPreferences = UserModels.UserPreferences
+
 @MainActor
 class SettingsManager: ObservableObject {
+    // MARK: - Shared Instance
+    static let shared = SettingsManager()
+    
     // MARK: - Published Properties
     @Published var userPreferences: UserPreferences
     @Published var hasAPIKey: Bool = false

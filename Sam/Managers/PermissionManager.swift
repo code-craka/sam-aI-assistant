@@ -163,7 +163,7 @@ class PermissionManager: ObservableObject {
         }
     }
     
-    private func requestFileSystemAccess() async -> Bool {
+    func requestFileSystemAccess() async -> Bool {
         // Show file picker to trigger permission dialog
         let panel = NSOpenPanel()
         panel.canChooseFiles = false

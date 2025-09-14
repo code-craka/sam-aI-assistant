@@ -452,15 +452,7 @@ extension WorkflowTrigger.TriggerType {
 }
 
 // MARK: - Workflow Template
-
-struct WorkflowTemplate {
-    let name: String
-    let description: String
-    let steps: [WorkflowStepDefinition]
-    let variables: [String: AnyCodable]
-    let triggers: [WorkflowTrigger]
-    let tags: [String]
-}
+// WorkflowTemplate is defined in WorkflowBuilder.swift - using that definition
 
 #Preview {
     let sampleVariables: [String: AnyCodable] = [

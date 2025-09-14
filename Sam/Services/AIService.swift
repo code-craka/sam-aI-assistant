@@ -592,7 +592,6 @@ private extension AIService {
         
         return prompt
     }
-}
 
 // MARK: - Enhanced Response Types
 

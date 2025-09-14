@@ -42,7 +42,7 @@ struct PerformanceDashboardView: View {
                     CacheTab()
                         .tag(4)
                 }
-                .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
+                .tabViewStyle(.automatic)
             }
         }
         .navigationTitle("Performance Dashboard")
