@@ -5,6 +5,8 @@ struct ContentView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @EnvironmentObject private var appState: AppState
     @StateObject private var chatManager = ChatManager()
+    @StateObject private var onboardingManager = OnboardingManager()
+    @StateObject private var helpManager = HelpManager()
     @State private var showingAbout = false
     @State private var showingWorkflows = false
     @State private var selectedTab: MainTab = .chat
@@ -72,6 +74,14 @@ struct ContentView: View {
                 }
                 
                 Button(action: {
+                    helpManager.showOnboarding()
+                }) {
+                    Image(systemName: "questionmark.circle")
+                }
+                .help("Help & Onboarding")
+                .accessibilityLabel("Show help and onboarding")
+                
+                Button(action: {
                     appState.openSettings()
                 }) {
                     Image(systemName: "gear")
@@ -102,8 +112,38 @@ struct ContentView: View {
         .sheet(isPresented: $showingAbout) {
             AboutView()
         }
+        .sheet(isPresented: $onboardingManager.showingOnboarding) {
+            OnboardingView()
+                .environmentObject(onboardingManager)
+        }
+        .sheet(isPresented: $helpManager.showingOnboarding) {
+            OnboardingView()
+                .environmentObject(onboardingManager)
+        }
+        .sheet(isPresented: $helpManager.showingCommandPalette) {
+            CommandPaletteView()
+        }
+        .sheet(isPresented: $helpManager.showingKeyboardShortcuts) {
+            KeyboardShortcutsView()
+        }
+        .onAppear {
+            setupInitialState()
+        }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Sam AI Assistant main interface")
+    }
+    
+    private func setupInitialState() {
+        // Track app launch
+        AnalyticsManager.shared.track(.appLaunched)
+        
+        // Show onboarding if first launch
+        if onboardingManager.shouldShowOnboarding {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                onboardingManager.showingOnboarding = true
+                AnalyticsManager.shared.track(.onboardingStarted)
+            }
+        }
     }
 }
 

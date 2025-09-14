@@ -20,6 +20,7 @@ class ChatManager: ObservableObject {
     private let contextManager = ContextManager()
     private let chatRepository = ChatRepository()
     private let persistenceController = PersistenceController.shared
+    private let aiService = AIService()
     private var cancellables = Set<AnyCancellable>()
 
     // Message threading support
@@ -52,6 +53,9 @@ class ChatManager: ObservableObject {
         isProcessing = true
 
         do {
+            // Check if this is a follow-up message
+            let isFollowUp = aiService.isFollowUpMessage(content)
+            
             // Create user message using repository
             let userMessage = try await chatRepository.addUserMessage(
                 content: content,
@@ -69,11 +73,15 @@ class ChatManager: ObservableObject {
             // Start streaming response
             await startStreamingResponse()
 
-            // Process the message
-            let response = try await processMessage(content)
+            // Process the message with enhanced AI features
+            let enhancedResponse = try await aiService.processMessageWithContext(
+                content,
+                conversationHistory: messages,
+                isFollowUp: isFollowUp
+            )
 
             // Complete streaming and create final assistant message
-            await completeStreamingResponse(with: response)
+            await completeStreamingResponseWithEnhancement(with: enhancedResponse)
 
         } catch {
             await handleMessageError(error)
@@ -451,6 +459,51 @@ class ChatManager: ObservableObject {
             print("Failed to create assistant message: \(error)")
         }
     }
+    
+    private func completeStreamingResponseWithEnhancement(with enhancedResponse: EnhancedCompletionResponse) async {
+        if var streaming = streamingMessage {
+            streaming.complete()
+            streamingMessage = streaming
+
+            // Brief delay to show completion state
+            try? await Task.sleep(nanoseconds: 500_000_000)  // 500ms
+        }
+
+        streamingMessage = nil
+        typingIndicator = ChatModels.TypingIndicator(isVisible: false)
+        processingProgress = 0.0
+
+        guard let conversation = currentConversation else { return }
+
+        do {
+            // Extract content from enhanced response
+            let content = enhancedResponse.originalResponse.choices.first?.message.content ?? "No response"
+            let tokens = enhancedResponse.originalResponse.usage?.totalTokens ?? 0
+            
+            // Create assistant message using repository
+            let assistantMessage = try await chatRepository.addAssistantMessage(
+                content: content,
+                taskType: enhancedResponse.taskClassification.taskType,
+                taskResult: nil, // Will be set by task execution
+                executionTime: 0, // Will be updated
+                tokens: tokens,
+                cost: 0, // Will be calculated
+                to: conversation
+            )
+
+            let assistantSwiftUIMessage = convertToSwiftUIMessage(assistantMessage)
+            messages.append(assistantSwiftUIMessage)
+            updateUsageMetrics(with: assistantSwiftUIMessage)
+
+            // Add to current thread if active
+            if let threadId = currentThreadId {
+                addMessageToThread(assistantSwiftUIMessage, threadId: threadId)
+            }
+
+        } catch {
+            print("Failed to create enhanced assistant message: \(error)")
+        }
+    }
 
     private func handleMessageError(_ error: Error) async {
         await handleStreamingError(error)
@@ -767,8 +820,33 @@ extension ChatManager {
                 summary += "\n• \(taskType.displayName): \(count)"
             }
         }
+        
+        // Add AI context summary
+        summary += "\n\n" + aiService.getConversationSummary()
 
         return summary
+    }
+    
+    // MARK: - Advanced AI Features Access
+    
+    /// Get smart command completions
+    func getCommandCompletions(for input: String) -> [CommandCompletion] {
+        return aiService.getSmartCompletions(for: input)
+    }
+    
+    /// Get personalized suggestions
+    func getPersonalizedSuggestions() -> [SmartSuggestion] {
+        return aiService.getPersonalizedSuggestions()
+    }
+    
+    /// Reset AI learning data
+    func resetAILearning() {
+        aiService.resetLearning()
+    }
+    
+    /// Check if message is a follow-up
+    func isFollowUpMessage(_ content: String) -> Bool {
+        return aiService.isFollowUpMessage(content)
     }
 
     func getConversationStatistics() async -> ChatStatistics? {

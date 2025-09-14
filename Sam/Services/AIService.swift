@@ -18,12 +18,26 @@ class AIService: ObservableObject {
     private let performanceTracker = PerformanceTracker.shared
     private var cancellables = Set<AnyCancellable>()
     
+    // Advanced AI features
+    private let conversationContextService: ConversationContextService
+    private let userPatternLearning: UserPatternLearningService
+    private let smartSuggestions: SmartSuggestionsService
+    
     // MARK: - Initialization
     init() {
         self.client = OpenAIClient()
         self.costTracker = CostTracker()
         self.contextManager = ContextManager()
         self.rateLimiter = RateLimiter()
+        
+        // Initialize advanced AI features
+        self.conversationContextService = ConversationContextService()
+        self.userPatternLearning = UserPatternLearningService()
+        self.smartSuggestions = SmartSuggestionsService(
+            userPatternLearning: userPatternLearning,
+            conversationContext: conversationContextService,
+            contextManager: contextManager
+        )
         
         setupObservers()
     }
@@ -211,6 +225,137 @@ class AIService: ObservableObject {
             return false
         }
     }
+    
+    // MARK: - Advanced AI Features
+    
+    /// Process message with context awareness and learning
+    func processMessageWithContext(
+        _ content: String,
+        conversationHistory: [ChatModels.ChatMessage] = [],
+        isFollowUp: Bool = false
+    ) async throws -> EnhancedCompletionResponse {
+        
+        // Record user interaction for learning
+        let interaction = UserInteraction(
+            command: content,
+            taskType: .textProcessing, // Will be updated after classification
+            workingDirectory: FileManager.default.currentDirectoryPath
+        )
+        
+        // Check if this is a follow-up message and resolve references
+        let processedContent = isFollowUp ? 
+            conversationContextService.resolveReferences(in: content) : content
+        
+        // Update conversation context
+        let userMessage = ChatModels.ChatMessage(
+            content: processedContent,
+            isUserMessage: true
+        )
+        conversationContextService.updateContext(with: userMessage, systemContext: contextManager.systemContext)
+        
+        // Get enhanced context for AI processing
+        let contextForAI = conversationContextService.getContextForAI()
+        
+        // Create enhanced messages with context
+        var enhancedMessages = createContextAwareMessages(
+            content: processedContent,
+            context: contextForAI,
+            history: conversationHistory
+        )
+        
+        // Generate completion with context
+        let response = try await generateCompletion(
+            messages: enhancedMessages,
+            temperature: 0.7
+        )
+        
+        // Extract and update task classification
+        let taskType = try await classifyTask(processedContent)
+        
+        // Update user interaction with actual task type
+        var updatedInteraction = interaction
+        updatedInteraction = UserInteraction(
+            command: content,
+            taskType: taskType.taskType,
+            success: true,
+            workingDirectory: interaction.workingDirectory
+        )
+        userPatternLearning.recordInteraction(updatedInteraction)
+        
+        // Generate smart suggestions for next actions
+        await smartSuggestions.generateSuggestions(context: contextForAI)
+        
+        // Create assistant message and update context
+        if let assistantContent = response.choices.first?.message.content {
+            let assistantMessage = ChatModels.ChatMessage(
+                content: assistantContent,
+                isUserMessage: false,
+                taskType: taskType.taskType
+            )
+            conversationContextService.updateContext(with: assistantMessage)
+        }
+        
+        return EnhancedCompletionResponse(
+            originalResponse: response,
+            taskClassification: taskType,
+            contextualSuggestions: conversationContextService.contextualSuggestions,
+            followUpQuestions: conversationContextService.followUpQuestions,
+            smartSuggestions: smartSuggestions.currentSuggestions,
+            isFollowUp: isFollowUp,
+            resolvedContent: processedContent
+        )
+    }
+    
+    /// Get command completions with learning
+    func getSmartCompletions(for partialInput: String) -> [CommandCompletion] {
+        return smartSuggestions.getCommandCompletions(for: partialInput)
+    }
+    
+    /// Get personalized suggestions
+    func getPersonalizedSuggestions() -> [SmartSuggestion] {
+        let context = conversationContextService.getContextForAI()
+        return userPatternLearning.getPersonalizedSuggestions(for: context)
+            .map { suggestion in
+                SmartSuggestion(
+                    text: suggestion.text,
+                    command: suggestion.command,
+                    relevanceScore: suggestion.relevanceScore,
+                    category: .automation,
+                    reason: suggestion.reason
+                )
+            }
+    }
+    
+    /// Check if input is a follow-up message
+    func isFollowUpMessage(_ content: String) -> Bool {
+        return conversationContextService.isFollowUpMessage(content)
+    }
+    
+    /// Get conversation context summary
+    func getConversationSummary() -> String {
+        let context = conversationContextService.getContextForAI()
+        var summary = "Current conversation context:\n"
+        
+        if let topic = context.currentTopic {
+            summary += "• Topic: \(topic)\n"
+        }
+        
+        if !context.activeEntities.isEmpty {
+            summary += "• Active entities: \(context.activeEntities.map { $0.displayName }.joined(separator: ", "))\n"
+        }
+        
+        if let lastTask = context.taskContext.lastTask {
+            summary += "• Last task: \(lastTask.type.displayName)\n"
+        }
+        
+        return summary
+    }
+    
+    /// Reset learning data
+    func resetLearning() {
+        userPatternLearning.resetLearning()
+        smartSuggestions.clearCache()
+    }
 }
 
 // MARK: - Private Methods
@@ -364,4 +509,99 @@ private extension AIService {
             requiresConfirmation: requiresConfirmation
         )
     }
+} 
+   
+    private func createContextAwareMessages(
+        content: String,
+        context: ConversationContextForAI,
+        history: [ChatModels.ChatMessage]
+    ) -> [ChatModels.ChatMessage] {
+        var messages: [ChatModels.ChatMessage] = []
+        
+        // Add system message with context
+        let systemPrompt = createEnhancedSystemPrompt(context: context)
+        messages.append(ChatModels.ChatMessage(
+            content: systemPrompt,
+            isUserMessage: false
+        ))
+        
+        // Add relevant conversation history
+        let relevantHistory = Array(history.suffix(5))
+        messages.append(contentsOf: relevantHistory)
+        
+        // Add current user message
+        messages.append(ChatModels.ChatMessage(
+            content: content,
+            isUserMessage: true
+        ))
+        
+        return messages
+    }
+    
+    private func createEnhancedSystemPrompt(context: ConversationContextForAI) -> String {
+        var prompt = """
+        You are Sam, an intelligent macOS AI assistant with advanced context awareness and learning capabilities.
+        
+        Current Context:
+        """
+        
+        // Add system information
+        if context.systemContext.batteryLevel != nil {
+            prompt += "\n• Battery: \(Int((context.systemContext.batteryLevel ?? 0) * 100))%"
+            if context.systemContext.isCharging {
+                prompt += " (charging)"
+            }
+        }
+        
+        prompt += "\n• Available Storage: \(context.systemContext.availableStorage / (1024*1024*1024))GB"
+        prompt += "\n• Memory Usage: \(String(format: "%.1f", context.systemContext.memoryUsage))GB"
+        
+        // Add conversation topic
+        if let topic = context.currentTopic {
+            prompt += "\n• Current Topic: \(topic)"
+        }
+        
+        // Add active entities
+        if !context.activeEntities.isEmpty {
+            let entityList = context.activeEntities.prefix(3).map { $0.displayName }.joined(separator: ", ")
+            prompt += "\n• Active Entities: \(entityList)"
+        }
+        
+        // Add recent task context
+        if let lastTask = context.taskContext.lastTask {
+            prompt += "\n• Last Task: \(lastTask.type.displayName)"
+            if let result = lastTask.result {
+                prompt += result.success ? " (successful)" : " (failed)"
+            }
+        }
+        
+        // Add user preferences
+        if !context.userPreferences.preferredApps.isEmpty {
+            prompt += "\n• User Preferences: Uses preferred apps for tasks"
+        }
+        
+        prompt += """
+        
+        Instructions:
+        - Provide contextual and personalized responses based on the above information
+        - Reference previous conversations and entities when relevant
+        - Suggest follow-up actions that align with user patterns
+        - Be proactive in offering helpful suggestions
+        - Maintain conversation continuity and context awareness
+        """
+        
+        return prompt
+    }
+}
+
+// MARK: - Enhanced Response Types
+
+struct EnhancedCompletionResponse {
+    let originalResponse: CompletionResponse
+    let taskClassification: TaskClassificationResult
+    let contextualSuggestions: [ContextualSuggestion]
+    let followUpQuestions: [FollowUpQuestion]
+    let smartSuggestions: [SmartSuggestion]
+    let isFollowUp: Bool
+    let resolvedContent: String
 }
