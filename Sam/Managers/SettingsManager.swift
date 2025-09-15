@@ -6,7 +6,7 @@ import AppKit
 @MainActor
 class SettingsManager: ObservableObject {
     // MARK: - Published Properties
-    @Published var userPreferences: UserPreferences
+    @Published var userPreferences: UserPreferencesModel
     @Published var hasAPIKey: Bool = false
     @Published var apiKeyValidationStatus: APIKeyValidationStatus = .unknown
     @Published var isValidatingAPIKey: Bool = false
@@ -112,7 +112,17 @@ class SettingsManager: ObservableObject {
     
     // MARK: - User Preferences Management
     
-    func updatePreferences(_ preferences: UserPreferences) {
+    func binding<Value>(for keyPath: WritableKeyPath<UserPreferencesModel, Value>) -> Binding<Value> {
+        Binding(
+            get: { self.userPreferences[keyPath: keyPath] },
+            set: { newValue in
+                self.userPreferences[keyPath: keyPath] = newValue
+                self.saveUserPreferences(self.userPreferences)
+            }
+        )
+    }
+
+    func updatePreferences(_ preferences: UserPreferencesModel) {
         userPreferences = preferences
         saveUserPreferences(preferences)
         NotificationCenter.default.post(name: .settingsChanged, object: preferences)
@@ -172,7 +182,7 @@ class SettingsManager: ObservableObject {
     // MARK: - Reset and Export
     
     func resetToDefaults() {
-        userPreferences = UserPreferences()
+        userPreferences = UserPreferencesModel()
         saveUserPreferences(userPreferences)
         
         // Clear keychain
@@ -236,15 +246,15 @@ class SettingsManager: ObservableObject {
             .store(in: &cancellables)
     }
     
-    private static func loadUserPreferences() -> UserPreferences {
+    private static func loadUserPreferences() -> UserPreferencesModel {
         guard let data = UserDefaults.standard.data(forKey: "userPreferences"),
-              let preferences = try? JSONDecoder().decode(UserPreferences.self, from: data) else {
-            return UserPreferences()
+              let preferences = try? JSONDecoder().decode(UserPreferencesModel.self, from: data) else {
+            return UserPreferencesModel()
         }
         return preferences
     }
     
-    private func saveUserPreferences(_ preferences: UserPreferences) {
+    private func saveUserPreferences(_ preferences: UserPreferencesModel) {
         if let data = try? JSONEncoder().encode(preferences) {
             userDefaults.set(data, forKey: "userPreferences")
         }
@@ -354,7 +364,7 @@ extension SettingsManager {
     
     func updateCustomThemeSettings(_ settings: CustomThemeSettings) {
         // Store custom theme settings in user preferences
-        // This would extend UserPreferences to include custom theme settings
+        // This would extend UserPreferencesModel to include custom theme settings
         saveUserPreferences(userPreferences)
     }
     
@@ -398,7 +408,7 @@ extension SettingsManager {
     
     func deleteAllUserData() {
         // Reset preferences
-        userPreferences = UserPreferences()
+        userPreferences = UserPreferencesModel()
         saveUserPreferences(userPreferences)
         
         // Clear keychain
@@ -444,12 +454,12 @@ struct InterfacePreferences: Codable {
 }
 
 struct UserDataExport: Codable {
-    let preferences: UserPreferences
+    let preferences: UserPreferencesModel
     let conversationHistory: [String] // Simplified for now
     let customSettings: [String: String]
     let exportDate: Date
     
-    init(preferences: UserPreferences, conversationHistory: [String], customSettings: [String: String]) {
+    init(preferences: UserPreferencesModel, conversationHistory: [String], customSettings: [String: String]) {
         self.preferences = preferences
         self.conversationHistory = conversationHistory
         self.customSettings = customSettings

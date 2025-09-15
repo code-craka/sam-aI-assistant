@@ -186,31 +186,6 @@ struct TaskSystemInfo: Codable {
     }
 }
 
-// MARK: - Memory Information
-struct MemoryInfo: Codable {
-    let totalMemory: Int64
-    let usedMemory: Int64
-    let availableMemory: Int64
-    let memoryPressure: MemoryPressure
-    
-    init(
-        totalMemory: Int64 = 0,
-        usedMemory: Int64 = 0,
-        availableMemory: Int64 = 0,
-        memoryPressure: MemoryPressure = .normal
-    ) {
-        self.totalMemory = totalMemory
-        self.usedMemory = usedMemory
-        self.availableMemory = availableMemory
-        self.memoryPressure = memoryPressure
-    }
-}
-
-enum MemoryPressure: String, Codable {
-    case normal = "normal"
-    case warning = "warning"
-    case critical = "critical"
-}
 
 // MARK: - Network Status
 struct NetworkStatus: Codable {

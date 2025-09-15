@@ -269,9 +269,47 @@ enum WorkflowError: LocalizedError {
     }
 }
 
+// MARK: - Workflow Template
+struct WorkflowTemplate: Codable, Identifiable, Hashable {
+    let id: UUID
+    let name: String
+    let description: String
+    let steps: [WorkflowStepDefinition]
+    let variables: [String: AnyCodable]
+    let triggers: [WorkflowTrigger]
+    let tags: [String]
+
+    init(
+        id: UUID = UUID(),
+        name: String,
+        description: String,
+        steps: [WorkflowStepDefinition],
+        variables: [String : AnyCodable],
+        triggers: [WorkflowTrigger],
+        tags: [String]
+    ) {
+        self.id = id
+        self.name = name
+        self.description = description
+        self.steps = steps
+        self.variables = variables
+        self.triggers = triggers
+        self.tags = tags
+    }
+}
+
 // MARK: - AnyCodable Helper
 
-struct AnyCodable: Codable {
+struct AnyCodable: Codable, Hashable {
+    static func == (lhs: AnyCodable, rhs: AnyCodable) -> Bool {
+        // Implement equality based on your specific needs, this is a basic example
+        return String(describing: lhs.value) == String(describing: rhs.value)
+    }
+
+    func hash(into hasher: inout Hasher) {
+        // Implement hashing based on your specific needs
+        String(describing: value).hash(into: &hasher)
+    }
     let value: Any
     
     init(_ value: Any) {

@@ -7,7 +7,7 @@ enum UserModels {
 }
 
 // MARK: - User Preferences
-struct UserPreferences: Codable {
+struct UserPreferencesModel: Codable {
     let id: UUID
     var preferredModel: UserModels.AIModel
     var maxTokens: Int

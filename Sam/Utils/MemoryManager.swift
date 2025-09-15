@@ -8,7 +8,7 @@ class MemoryManager: ObservableObject {
     
     // MARK: - Published Properties
     @Published var currentMemoryUsage: UInt64 = 0
-    @Published var memoryPressure: MemoryPressure = .normal
+    @Published var memoryPressure: MemoryInfo.State = .normal
     @Published var isCleanupInProgress = false
     
     // MARK: - Private Properties
@@ -19,8 +19,8 @@ class MemoryManager: ObservableObject {
     
     // Memory thresholds (in bytes)
     private let warningThreshold: UInt64 = 150 * 1024 * 1024  // 150MB
-    private let criticalThreshold: UInt64 = 200 * 1024 * 1024 // 200MB
-    private let emergencyThreshold: UInt64 = 250 * 1024 * 1024 // 250MB
+    private let urgentThreshold: UInt64 = 200 * 1024 * 1024 // 200MB
+    private let criticalThreshold: UInt64 = 250 * 1024 * 1024 // 250MB
     
     private init() {
         startMemoryMonitoring()
@@ -72,20 +72,20 @@ class MemoryManager: ObservableObject {
         return kerr == KERN_SUCCESS ? info.resident_size : 0
     }
     
-    private func determineMemoryPressure(_ usage: UInt64) -> MemoryPressure {
+    private func determineMemoryPressure(_ usage: UInt64) -> MemoryInfo.State {
         switch usage {
         case 0..<warningThreshold:
             return .normal
-        case warningThreshold..<criticalThreshold:
+        case warningThreshold..<urgentThreshold:
             return .warning
-        case criticalThreshold..<emergencyThreshold:
-            return .critical
+        case urgentThreshold..<criticalThreshold:
+            return .urgent
         default:
-            return .emergency
+            return .critical
         }
     }
     
-    private func handleMemoryPressureChange(_ pressure: MemoryPressure) async {
+    private func handleMemoryPressureChange(_ pressure: MemoryInfo.State) async {
         logger.info("Memory pressure changed to: \(pressure.rawValue)")
         
         switch pressure {
@@ -93,9 +93,9 @@ class MemoryManager: ObservableObject {
             break // No action needed
         case .warning:
             await performLightCleanup()
-        case .critical:
+        case .urgent:
             await performMediumCleanup()
-        case .emergency:
+        case .critical:
             await performAggressiveCleanup()
         }
         
@@ -282,9 +282,9 @@ class MemoryManager: ObservableObject {
             currentUsage: currentMemoryUsage,
             pressure: memoryPressure,
             warningThreshold: warningThreshold,
-            criticalThreshold: criticalThreshold,
-            emergencyThreshold: emergencyThreshold,
-            usagePercentage: Double(currentMemoryUsage) / Double(emergencyThreshold) * 100,
+            criticalThreshold: urgentThreshold,
+            emergencyThreshold: criticalThreshold,
+            usagePercentage: Double(currentMemoryUsage) / Double(criticalThreshold) * 100,
             registeredHandlers: cleanupHandlers.count
         )
     }
@@ -292,25 +292,9 @@ class MemoryManager: ObservableObject {
 
 // MARK: - Supporting Types
 
-enum MemoryPressure: String, CaseIterable {
-    case normal = "normal"
-    case warning = "warning"
-    case critical = "critical"
-    case emergency = "emergency"
-    
-    var color: String {
-        switch self {
-        case .normal: return "green"
-        case .warning: return "yellow"
-        case .critical: return "orange"
-        case .emergency: return "red"
-        }
-    }
-}
-
 struct MemoryStatistics {
     let currentUsage: UInt64
-    let pressure: MemoryPressure
+    let pressure: MemoryInfo.State
     let warningThreshold: UInt64
     let criticalThreshold: UInt64
     let emergencyThreshold: UInt64

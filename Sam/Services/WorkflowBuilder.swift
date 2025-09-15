@@ -1290,14 +1290,6 @@ class WorkflowBuilder: ObservableObject {
 
 // MARK: - Supporting Types
 
-struct WorkflowTemplate {
-    let name: String
-    let description: String
-    let steps: [WorkflowStepDefinition]
-    let variables: [String: AnyCodable]
-    let triggers: [WorkflowTrigger]
-    let tags: [String]
-}
 
 struct WorkflowValidationResult {
     let isValid: Bool

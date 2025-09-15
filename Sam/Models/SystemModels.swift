@@ -91,7 +91,7 @@ struct VolumeInfo: Codable, Equatable, Identifiable {
 }
 
 /// Memory information structure
-struct SystemMemoryInfo: Codable, Equatable {
+struct MemoryInfo: Codable, Equatable {
     let totalMemory: Int64 // in bytes
     let usedMemory: Int64 // in bytes
     let availableMemory: Int64 // in bytes
@@ -99,9 +99,9 @@ struct SystemMemoryInfo: Codable, Equatable {
     let wiredMemory: Int64 // memory wired down
     let compressedMemory: Int64 // compressed memory
     let swapUsed: Int64 // swap space used
-    let memoryPressure: MemoryPressure
+    let memoryPressure: State
     
-    enum MemoryPressure: String, Codable {
+    enum State: String, Codable {
         case normal = "normal"
         case warning = "warning"
         case urgent = "urgent"

@@ -570,10 +570,3 @@ struct ConversationContextForAI {
     let systemContext: SystemContext
     let userPreferences: UserPreferences
 }
-
-struct UserPreferences {
-    var preferredApps: [String: String] = [:]
-    var commonTasks: [String] = []
-    var workingDirectories: [String] = []
-    var timeZone: TimeZone = TimeZone.current
-}

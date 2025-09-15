@@ -89,9 +89,9 @@ struct WelcomeStepView: View {
                 .multilineTextAlignment(.center)
             
             VStack(alignment: .leading, spacing: 12) {
-                FeatureRow(icon: "gear", title: "Task Execution", description: "Performs actual file operations and system tasks")
-                FeatureRow(icon: "lock.shield", title: "Privacy First", description: "Local processing with optional cloud features")
-                FeatureRow(icon: "app.connected.to.app.below.fill", title: "Deep Integration", description: "Works seamlessly with your favorite Mac apps")
+                FeatureHighlightRow(icon: "gear", title: "Task Execution", description: "Performs actual file operations and system tasks")
+                FeatureHighlightRow(icon: "lock.shield", title: "Privacy First", description: "Local processing with optional cloud features")
+                FeatureHighlightRow(icon: "app.connected.to.app.below.fill", title: "Deep Integration", description: "Works seamlessly with your favorite Mac apps")
             }
             .padding()
             .background(Color(.controlBackgroundColor))
@@ -294,7 +294,7 @@ struct ExamplesStepView: View {
 
 // MARK: - Supporting Views
 
-struct FeatureRow: View {
+struct FeatureHighlightRow: View {
     let icon: String
     let title: String
     let description: String

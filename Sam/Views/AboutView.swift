@@ -37,11 +37,11 @@ struct AboutView: View {
                     .font(.headline)
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    FeatureRow(icon: "folder", text: "File system operations")
-                    FeatureRow(icon: "info.circle", text: "System information queries")
-                    FeatureRow(icon: "app.badge", text: "Application integration")
-                    FeatureRow(icon: "gearshape.2", text: "Workflow automation")
-                    FeatureRow(icon: "hand.raised", text: "Privacy-first design")
+                    FeatureListItem(icon: "folder", text: "File system operations")
+                    FeatureListItem(icon: "info.circle", text: "System information queries")
+                    FeatureListItem(icon: "app.badge", text: "Application integration")
+                    FeatureListItem(icon: "gearshape.2", text: "Workflow automation")
+                    FeatureListItem(icon: "hand.raised", text: "Privacy-first design")
                 }
             }
             
@@ -68,7 +68,7 @@ struct AboutView: View {
     }
 }
 
-struct FeatureRow: View {
+struct FeatureListItem: View {
     let icon: String
     let text: String
     

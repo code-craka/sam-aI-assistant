@@ -600,18 +600,3 @@ struct TimeBasedPattern {
         return taskType == other.taskType && hour == other.hour && dayOfWeek == other.dayOfWeek
     }
 }
-
-struct UserPreferences: Codable {
-    var preferredApps: [String: String] = [:]
-    var commonTasks: [String] = []
-    var workingDirectories: [String] = []
-    var timeZone: String = TimeZone.current.identifier
-    var learningEnabled: Bool = true
-    var privacyLevel: PrivacyLevel = .balanced
-    
-    enum PrivacyLevel: String, Codable {
-        case minimal
-        case balanced
-        case comprehensive
-    }
-}

@@ -284,58 +284,23 @@ struct AppearanceSettingsView: View {
             }
             
             Section("Chat Interface") {
-                Toggle("Compact mode", isOn: Binding(
-                    get: { settingsManager.userPreferences.interfacePreferences.compactMode },
-                    set: { 
-                        var prefs = settingsManager.userPreferences
-                        prefs.interfacePreferences.compactMode = $0
-                        settingsManager.updatePreferences(prefs)
-                    }
-                ))
-                .accessibilityHint("Use a more compact layout with less spacing")
+                Toggle("Compact mode", isOn: settingsManager.binding(for: \.interfacePreferences.compactMode))
+                    .accessibilityHint("Use a more compact layout with less spacing")
                 
-                Toggle("Show timestamps", isOn: Binding(
-                    get: { settingsManager.userPreferences.interfacePreferences.showTimestamps },
-                    set: { 
-                        var prefs = settingsManager.userPreferences
-                        prefs.interfacePreferences.showTimestamps = $0
-                        settingsManager.updatePreferences(prefs)
-                    }
-                ))
-                .accessibilityHint("Display timestamps for each message")
+                Toggle("Show timestamps", isOn: settingsManager.binding(for: \.interfacePreferences.showTimestamps))
+                    .accessibilityHint("Display timestamps for each message")
                 
-                Toggle("Group messages", isOn: Binding(
-                    get: { settingsManager.userPreferences.interfacePreferences.groupMessages },
-                    set: { 
-                        var prefs = settingsManager.userPreferences
-                        prefs.interfacePreferences.groupMessages = $0
-                        settingsManager.updatePreferences(prefs)
-                    }
-                ))
-                .accessibilityHint("Group consecutive messages from the same sender")
+                Toggle("Group messages", isOn: settingsManager.binding(for: \.interfacePreferences.groupMessages))
+                    .accessibilityHint("Group consecutive messages from the same sender")
                 
-                Picker("Message spacing", selection: Binding(
-                    get: { settingsManager.userPreferences.interfacePreferences.messageSpacing },
-                    set: { 
-                        var prefs = settingsManager.userPreferences
-                        prefs.interfacePreferences.messageSpacing = $0
-                        settingsManager.updatePreferences(prefs)
-                    }
-                )) {
+                Picker("Message spacing", selection: settingsManager.binding(for: \.interfacePreferences.messageSpacing)) {
                     ForEach(MessageSpacing.allCases, id: \.self) { spacing in
                         Text(spacing.displayName).tag(spacing)
                     }
                 }
                 .pickerStyle(.segmented)
                 
-                Picker("Font scale", selection: Binding(
-                    get: { settingsManager.userPreferences.interfacePreferences.fontScale },
-                    set: { 
-                        var prefs = settingsManager.userPreferences
-                        prefs.interfacePreferences.fontScale = $0
-                        settingsManager.updatePreferences(prefs)
-                    }
-                )) {
+                Picker("Font scale", selection: settingsManager.binding(for: \.interfacePreferences.fontScale)) {
                     ForEach(FontScale.allCases, id: \.self) { scale in
                         Text(scale.displayName).tag(scale)
                     }
@@ -344,35 +309,14 @@ struct AppearanceSettingsView: View {
             }
             
             Section("Animations & Effects") {
-                Toggle("Enable animations", isOn: Binding(
-                    get: { settingsManager.userPreferences.interfacePreferences.animationsEnabled },
-                    set: { 
-                        var prefs = settingsManager.userPreferences
-                        prefs.interfacePreferences.animationsEnabled = $0
-                        settingsManager.updatePreferences(prefs)
-                    }
-                ))
-                .accessibilityHint("Enable smooth animations and transitions")
+                Toggle("Enable animations", isOn: settingsManager.binding(for: \.interfacePreferences.animationsEnabled))
+                    .accessibilityHint("Enable smooth animations and transitions")
                 
-                Toggle("Sound effects", isOn: Binding(
-                    get: { settingsManager.userPreferences.interfacePreferences.soundEffectsEnabled },
-                    set: { 
-                        var prefs = settingsManager.userPreferences
-                        prefs.interfacePreferences.soundEffectsEnabled = $0
-                        settingsManager.updatePreferences(prefs)
-                    }
-                ))
-                .accessibilityHint("Play sound effects for interactions")
+                Toggle("Sound effects", isOn: settingsManager.binding(for: \.interfacePreferences.soundEffectsEnabled))
+                    .accessibilityHint("Play sound effects for interactions")
                 
-                Toggle("Show typing indicators", isOn: Binding(
-                    get: { settingsManager.userPreferences.interfacePreferences.showTypingIndicators },
-                    set: { 
-                        var prefs = settingsManager.userPreferences
-                        prefs.interfacePreferences.showTypingIndicators = $0
-                        settingsManager.updatePreferences(prefs)
-                    }
-                ))
-                .accessibilityHint("Show when Sam is typing a response")
+                Toggle("Show typing indicators", isOn: settingsManager.binding(for: \.interfacePreferences.showTypingIndicators))
+                    .accessibilityHint("Show when Sam is typing a response")
                 
                 Text("Animation settings respect your system's Reduce Motion preference.")
                     .font(.caption)
@@ -447,53 +391,18 @@ struct AppearanceSettingsView: View {
             }
             
             Section("Notifications") {
-                Toggle("Enable notifications", isOn: Binding(
-                    get: { settingsManager.userPreferences.notificationSettings.enableNotifications },
-                    set: { 
-                        var prefs = settingsManager.userPreferences
-                        prefs.notificationSettings.enableNotifications = $0
-                        settingsManager.updatePreferences(prefs)
-                    }
-                ))
-                .accessibilityHint("Allow Sam to send system notifications")
+                Toggle("Enable notifications", isOn: settingsManager.binding(for: \.notificationSettings.enableNotifications))
+                    .accessibilityHint("Allow Sam to send system notifications")
                 
                 if settingsManager.userPreferences.notificationSettings.enableNotifications {
-                    Toggle("Task completion notifications", isOn: Binding(
-                        get: { settingsManager.userPreferences.notificationSettings.taskCompletionNotifications },
-                        set: { 
-                            var prefs = settingsManager.userPreferences
-                            prefs.notificationSettings.taskCompletionNotifications = $0
-                            settingsManager.updatePreferences(prefs)
-                        }
-                    ))
+                    Toggle("Task completion notifications", isOn: settingsManager.binding(for: \.notificationSettings.taskCompletionNotifications))
                     
-                    Toggle("Error notifications", isOn: Binding(
-                        get: { settingsManager.userPreferences.notificationSettings.errorNotifications },
-                        set: { 
-                            var prefs = settingsManager.userPreferences
-                            prefs.notificationSettings.errorNotifications = $0
-                            settingsManager.updatePreferences(prefs)
-                        }
-                    ))
+                    Toggle("Error notifications", isOn: settingsManager.binding(for: \.notificationSettings.errorNotifications))
                     
-                    Toggle("Sound enabled", isOn: Binding(
-                        get: { settingsManager.userPreferences.notificationSettings.soundEnabled },
-                        set: { 
-                            var prefs = settingsManager.userPreferences
-                            prefs.notificationSettings.soundEnabled = $0
-                            settingsManager.updatePreferences(prefs)
-                        }
-                    ))
+                    Toggle("Sound enabled", isOn: settingsManager.binding(for: \.notificationSettings.soundEnabled))
                     
                     if settingsManager.userPreferences.notificationSettings.soundEnabled {
-                        Picker("Notification Sound", selection: Binding(
-                            get: { settingsManager.userPreferences.notificationSettings.notificationSound },
-                            set: { 
-                                var prefs = settingsManager.userPreferences
-                                prefs.notificationSettings.notificationSound = $0
-                                settingsManager.updatePreferences(prefs)
-                            }
-                        )) {
+                        Picker("Notification Sound", selection: settingsManager.binding(for: \.notificationSettings.notificationSound)) {
                             ForEach(NotificationSound.allCases, id: \.self) { sound in
                                 Text(sound.displayName).tag(sound)
                             }
@@ -574,10 +483,7 @@ struct AISettingsView: View {
             }
             
             Section("Model Selection") {
-                Picker("AI Model", selection: Binding(
-                    get: { settingsManager.userPreferences.preferredModel },
-                    set: { settingsManager.updateAIModel($0) }
-                )) {
+                Picker("AI Model", selection: settingsManager.binding(for: \.preferredModel)) {
                     ForEach(UserModels.AIModel.allCases, id: \.self) { model in
                         VStack(alignment: .leading) {
                             Text(model.displayName)
@@ -634,10 +540,7 @@ struct AISettingsView: View {
                         }
                         
                         Slider(
-                            value: Binding(
-                                get: { settingsManager.userPreferences.temperature },
-                                set: { settingsManager.updateTemperature($0) }
-                            ),
+                            value: settingsManager.binding(for: \.temperature),
                             in: 0...2,
                             step: 0.1
                         )
@@ -724,25 +627,11 @@ struct TaskExecutionSettingsView: View {
     var body: some View {
         Form {
             Section("Task Execution Behavior") {
-                Toggle("Auto-execute safe tasks", isOn: Binding(
-                    get: { settingsManager.userPreferences.autoExecuteTasks },
-                    set: { 
-                        var prefs = settingsManager.userPreferences
-                        prefs.autoExecuteTasks = $0
-                        settingsManager.updatePreferences(prefs)
-                    }
-                ))
-                .accessibilityHint("Automatically execute tasks that are considered safe without confirmation")
+                Toggle("Auto-execute safe tasks", isOn: settingsManager.binding(for: \.autoExecuteTasks))
+                    .accessibilityHint("Automatically execute tasks that are considered safe without confirmation")
                 
-                Toggle("Confirm dangerous operations", isOn: Binding(
-                    get: { settingsManager.userPreferences.confirmDangerousOperations },
-                    set: { 
-                        var prefs = settingsManager.userPreferences
-                        prefs.confirmDangerousOperations = $0
-                        settingsManager.updatePreferences(prefs)
-                    }
-                ))
-                .accessibilityHint("Always ask for confirmation before performing potentially destructive operations")
+                Toggle("Confirm dangerous operations", isOn: settingsManager.binding(for: \.confirmDangerousOperations))
+                    .accessibilityHint("Always ask for confirmation before performing potentially destructive operations")
                 
                 Text("Safe tasks include file searches, system information queries, and read-only operations. Dangerous operations include file deletion, system changes, and app automation.")
                     .font(.caption)
@@ -754,14 +643,7 @@ struct TaskExecutionSettingsView: View {
                     Text("Processing Preference")
                         .font(.headline)
                     
-                    Picker("Processing Mode", selection: Binding(
-                        get: { settingsManager.userPreferences.privacySettings.dataSensitivityLevel },
-                        set: { 
-                            var prefs = settingsManager.userPreferences
-                            prefs.privacySettings.dataSensitivityLevel = $0
-                            settingsManager.updatePreferences(prefs)
-                        }
-                    )) {
+                    Picker("Processing Mode", selection: settingsManager.binding(for: \.privacySettings.dataSensitivityLevel)) {
                         ForEach(DataSensitivityLevel.allCases, id: \.self) { level in
                             VStack(alignment: .leading) {
                                 Text(level.displayName)
@@ -860,152 +742,6 @@ struct TaskExecutionSettingsView: View {
     }
 }
 
-struct PrivacySettingsView: View {
-    @EnvironmentObject private var settingsManager: SettingsManager
-    @State private var showingClearHistoryAlert = false
-    
-    var body: some View {
-        Form {
-            Section("Data Processing") {
-                Toggle("Allow cloud processing", isOn: Binding(
-                    get: { settingsManager.userPreferences.privacySettings.allowCloudProcessing },
-                    set: { 
-                        var prefs = settingsManager.userPreferences
-                        prefs.privacySettings.allowCloudProcessing = $0
-                        settingsManager.updatePreferences(prefs)
-                    }
-                ))
-                .accessibilityHint("Allow sending complex queries to cloud AI services for better results")
-                
-                Toggle("Encrypt local data", isOn: Binding(
-                    get: { settingsManager.userPreferences.privacySettings.encryptLocalData },
-                    set: { 
-                        var prefs = settingsManager.userPreferences
-                        prefs.privacySettings.encryptLocalData = $0
-                        settingsManager.updatePreferences(prefs)
-                    }
-                ))
-                .accessibilityHint("Encrypt stored conversations and preferences for additional security")
-                
-                Text("When cloud processing is disabled, Sam will only use local processing, which may limit capabilities for complex tasks.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            Section("Data Sharing") {
-                Toggle("Share anonymous usage data", isOn: Binding(
-                    get: { settingsManager.userPreferences.privacySettings.shareUsageData },
-                    set: { 
-                        var prefs = settingsManager.userPreferences
-                        prefs.privacySettings.shareUsageData = $0
-                        settingsManager.updatePreferences(prefs)
-                    }
-                ))
-                .accessibilityHint("Help improve Sam by sharing anonymous usage statistics")
-                
-                Text("Usage data includes feature usage patterns, error reports, and performance metrics. No personal data or conversation content is shared.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            Section("Data Retention") {
-                Toggle("Store conversation history", isOn: Binding(
-                    get: { settingsManager.userPreferences.privacySettings.storeConversationHistory },
-                    set: { 
-                        var prefs = settingsManager.userPreferences
-                        prefs.privacySettings.storeConversationHistory = $0
-                        settingsManager.updatePreferences(prefs)
-                    }
-                ))
-                .accessibilityHint("Save conversation history for context and reference")
-                
-                if settingsManager.userPreferences.privacySettings.storeConversationHistory {
-                    Toggle("Auto-delete old conversations", isOn: Binding(
-                        get: { settingsManager.userPreferences.privacySettings.autoDeleteOldChats },
-                        set: { 
-                            var prefs = settingsManager.userPreferences
-                            prefs.privacySettings.autoDeleteOldChats = $0
-                            settingsManager.updatePreferences(prefs)
-                        }
-                    ))
-                    .accessibilityHint("Automatically remove conversations older than the specified number of days")
-                    
-                    if settingsManager.userPreferences.privacySettings.autoDeleteOldChats {
-                        HStack {
-                            Text("Delete after:")
-                            Spacer()
-                            Picker("Days", selection: Binding(
-                                get: { settingsManager.userPreferences.privacySettings.autoDeleteAfterDays },
-                                set: { 
-                                    var prefs = settingsManager.userPreferences
-                                    prefs.privacySettings.autoDeleteAfterDays = $0
-                                    settingsManager.updatePreferences(prefs)
-                                }
-                            )) {
-                                Text("7 days").tag(7)
-                                Text("30 days").tag(30)
-                                Text("90 days").tag(90)
-                                Text("1 year").tag(365)
-                            }
-                            .pickerStyle(.menu)
-                            .frame(width: 100)
-                        }
-                    }
-                }
-                
-                Button("Clear All Chat History") {
-                    showingClearHistoryAlert = true
-                }
-                .foregroundColor(.red)
-                .accessibilityLabel("Clear all chat history")
-                .accessibilityHint("Permanently delete all stored conversations")
-            }
-            
-            Section("Data Sensitivity") {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Current Level: \(settingsManager.userPreferences.privacySettings.dataSensitivityLevel.displayName)")
-                        .font(.headline)
-                    
-                    Text(settingsManager.userPreferences.privacySettings.dataSensitivityLevel.description)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    Text("You can adjust this setting in the Tasks tab.")
-                        .font(.caption)
-                        .foregroundColor(.blue)
-                }
-            }
-            
-            Section("Privacy Information") {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("How Sam Protects Your Privacy")
-                        .font(.headline)
-                    
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("• Most tasks are processed locally on your Mac")
-                        Text("• API keys are stored securely in macOS Keychain")
-                        Text("• No conversation data is used for AI model training")
-                        Text("• You control what data is sent to external services")
-                        Text("• All network communications use encryption")
-                    }
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                }
-            }
-        }
-        .formStyle(.grouped)
-        .navigationTitle("Privacy & Security")
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .alert("Clear Chat History", isPresented: $showingClearHistoryAlert) {
-            Button("Cancel", role: .cancel) { }
-            Button("Clear All", role: .destructive) {
-                // TODO: Implement clear history functionality
-            }
-        } message: {
-            Text("This will permanently delete all stored conversations. This action cannot be undone.")
-        }
-    }
-}
 
 struct ShortcutsSettingsView: View {
     @EnvironmentObject private var settingsManager: SettingsManager
@@ -1731,202 +1467,6 @@ struct KeyboardShortcutRecorderView: View {
     }
 }
 
-// MARK: - Privacy Settings View
-struct PrivacySettingsView: View {
-    @EnvironmentObject private var settingsManager: SettingsManager
-    @State private var showingDataDeletionAlert = false
-    @State private var showingExportDataSheet = false
-    
-    var body: some View {
-        Form {
-            Section("Data Processing") {
-                Toggle("Allow cloud processing", isOn: Binding(
-                    get: { settingsManager.userPreferences.privacySettings.allowCloudProcessing },
-                    set: { 
-                        var prefs = settingsManager.userPreferences
-                        prefs.privacySettings.allowCloudProcessing = $0
-                        settingsManager.updatePreferences(prefs)
-                    }
-                ))
-                .accessibilityHint("Allow Sam to use cloud services for complex tasks")
-                
-                Picker("Data sensitivity level", selection: Binding(
-                    get: { settingsManager.userPreferences.privacySettings.dataSensitivityLevel },
-                    set: { 
-                        var prefs = settingsManager.userPreferences
-                        prefs.privacySettings.dataSensitivityLevel = $0
-                        settingsManager.updatePreferences(prefs)
-                    }
-                )) {
-                    ForEach(DataSensitivityLevel.allCases, id: \.self) { level in
-                        VStack(alignment: .leading) {
-                            Text(level.displayName)
-                            Text(level.description)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        .tag(level)
-                    }
-                }
-                .pickerStyle(.menu)
-                
-                Text("Higher sensitivity levels keep more data processing local but may limit functionality.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            Section("Data Storage") {
-                Toggle("Store conversation history", isOn: Binding(
-                    get: { settingsManager.userPreferences.privacySettings.storeConversationHistory },
-                    set: { 
-                        var prefs = settingsManager.userPreferences
-                        prefs.privacySettings.storeConversationHistory = $0
-                        settingsManager.updatePreferences(prefs)
-                    }
-                ))
-                .accessibilityHint("Save chat history for future reference")
-                
-                Toggle("Encrypt local data", isOn: Binding(
-                    get: { settingsManager.userPreferences.privacySettings.encryptLocalData },
-                    set: { 
-                        var prefs = settingsManager.userPreferences
-                        prefs.privacySettings.encryptLocalData = $0
-                        settingsManager.updatePreferences(prefs)
-                    }
-                ))
-                .accessibilityHint("Encrypt stored data using macOS keychain")
-                
-                Toggle("Auto-delete old chats", isOn: Binding(
-                    get: { settingsManager.userPreferences.privacySettings.autoDeleteOldChats },
-                    set: { 
-                        var prefs = settingsManager.userPreferences
-                        prefs.privacySettings.autoDeleteOldChats = $0
-                        settingsManager.updatePreferences(prefs)
-                    }
-                ))
-                .accessibilityHint("Automatically delete conversations after a specified time")
-                
-                if settingsManager.userPreferences.privacySettings.autoDeleteOldChats {
-                    HStack {
-                        Text("Delete after")
-                        Spacer()
-                        Picker("Days", selection: Binding(
-                            get: { settingsManager.userPreferences.privacySettings.autoDeleteAfterDays },
-                            set: { 
-                                var prefs = settingsManager.userPreferences
-                                prefs.privacySettings.autoDeleteAfterDays = $0
-                                settingsManager.updatePreferences(prefs)
-                            }
-                        )) {
-                            Text("7 days").tag(7)
-                            Text("30 days").tag(30)
-                            Text("90 days").tag(90)
-                            Text("1 year").tag(365)
-                        }
-                        .pickerStyle(.menu)
-                    }
-                }
-            }
-            
-            Section("Usage Analytics") {
-                Toggle("Share usage data", isOn: Binding(
-                    get: { settingsManager.userPreferences.privacySettings.shareUsageData },
-                    set: { 
-                        var prefs = settingsManager.userPreferences
-                        prefs.privacySettings.shareUsageData = $0
-                        settingsManager.updatePreferences(prefs)
-                    }
-                ))
-                .accessibilityHint("Help improve Sam by sharing anonymous usage statistics")
-                
-                Text("Usage data includes feature usage patterns and performance metrics. No personal data or conversation content is shared.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            Section("Data Management") {
-                VStack(alignment: .leading, spacing: 12) {
-                    Button("Export My Data") {
-                        showingExportDataSheet = true
-                    }
-                    .buttonStyle(.bordered)
-                    .accessibilityHint("Export all your data including settings and conversation history")
-                    
-                    Button("Delete All Data") {
-                        showingDataDeletionAlert = true
-                    }
-                    .buttonStyle(.bordered)
-                    .foregroundColor(.red)
-                    .accessibilityHint("Permanently delete all stored data")
-                }
-                
-                Text("Export includes settings, shortcuts, and conversation history (if enabled). Deletion removes all data permanently.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            Section("Privacy Information") {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Data Processing Locations:")
-                        .font(.headline)
-                    
-                    HStack {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(.green)
-                        Text("Local processing: Your Mac")
-                            .font(.caption)
-                    }
-                    
-                    if settingsManager.userPreferences.privacySettings.allowCloudProcessing {
-                        HStack {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(.orange)
-                            Text("Cloud processing: OpenAI servers (when needed)")
-                                .font(.caption)
-                        }
-                    }
-                    
-                    Text("API Keys:")
-                        .font(.headline)
-                        .padding(.top, 8)
-                    
-                    HStack {
-                        Image(systemName: "lock.fill")
-                            .foregroundColor(.green)
-                        Text("Stored securely in macOS Keychain")
-                            .font(.caption)
-                    }
-                    
-                    HStack {
-                        Image(systemName: "eye.slash.fill")
-                            .foregroundColor(.green)
-                        Text("Never shared or transmitted to third parties")
-                            .font(.caption)
-                    }
-                }
-            }
-        }
-        .formStyle(.grouped)
-        .navigationTitle("Privacy")
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .alert("Delete All Data", isPresented: $showingDataDeletionAlert) {
-            Button("Cancel", role: .cancel) { }
-            Button("Delete Everything", role: .destructive) {
-                // TODO: Implement data deletion
-            }
-        } message: {
-            Text("This will permanently delete all your data including conversation history, settings, and shortcuts. This action cannot be undone.")
-        }
-        .fileExporter(
-            isPresented: $showingExportDataSheet,
-            document: SettingsDocument(data: settingsManager.exportSettings() ?? Data()),
-            contentType: .json,
-            defaultFilename: "sam-user-data"
-        ) { result in
-            // Handle export result
-        }
-    }
-}
 
 // MARK: - Accessibility Settings View
 struct AccessibilitySettingsView: View {
